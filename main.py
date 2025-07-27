@@ -3,7 +3,6 @@
 import os
 from tqdm import tqdm
 
-from config import INPUT_FOLDER
 from extractor import extract_text
 from categorizer import get_aoai_client, categorize_case_study
 
@@ -22,7 +21,7 @@ def process_files(input_folder):
     return results, categories
 
 if __name__ == "__main__":
-    results, all_categories = process_files(INPUT_FOLDER)
+    results, all_categories = process_files("case_studies")
     print("\nCategorization Results:")
     for item in results:
         print(f"{item['filename']}: {item['category']}")
