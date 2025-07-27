@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from langchain_core.tools import tool
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_openai import AzureChatOpenAI
 
@@ -50,9 +50,11 @@ def categorize(text: str, existing_categories: str) -> str:
 tools = [categorize]
 
 # Step 4: Create prompt
-prompt_template = PromptTemplate.from_template("""
+prompt_template = ChatPromptTemplate.from_template("""
 You are a categorization agent. Your goal is to process case study text and choose a fitting category from a provided list,
 or create a new one if no good fit exists.
+
+{agent_scratchpad}
 """)
 
 # Step 5: Create agent + executor
