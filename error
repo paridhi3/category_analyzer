@@ -1,0 +1,9 @@
+C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer>python main.py
+Traceback (most recent call last):
+  File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\main.py", line 7, in <module>
+    from categorizer import run_categorization_agent
+  File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\categorizer.py", line 59, in <module>
+    agent = create_tool_calling_agent(llm, tools, prompt_template)
+  File "C:\Users\703417007_agarwal\AppData\Roaming\Python\Python313\site-packages\langchain\agents\tool_calling_agent\base.py", line 93, in create_tool_calling_agent
+    raise ValueError(f"Prompt missing required variables: {missing_vars}")
+ValueError: Prompt missing required variables: {'agent_scratchpad'}
