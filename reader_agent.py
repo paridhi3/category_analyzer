@@ -1,9 +1,9 @@
-# reader_agent.py
+# agents/reader_agent.py
 
-from llm_config import llm
-from langchain.agents import AgentExecutor, create_tool_calling_agent
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import tool
+from langchain_core.prompts import ChatPromptTemplate
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from llm_config import llm
 
 @tool
 def summarize_case_study(text: str) -> str:
@@ -21,4 +21,18 @@ def summarize_case_study(text: str) -> str:
     ])
     return output.content.strip()
 
-# ... rest remains the same
+tools = [summarize_case_study]
+
+prompt_template = ChatPromptTemplate.from_template("""
+You are a summarization agent. Your task is to extract the main subject area and key points from the case study.
+
+Case Study:
+{text}
+{agent_scratchpad}
+""")
+
+agent = create_tool_calling_agent(llm, tools, prompt_template)
+reader_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+
+def run_reader_agent(case_text: str) -> str:
+    return reader_executor.invoke({"text": case_text})["output"]
