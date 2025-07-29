@@ -27,13 +27,17 @@ def categorize(text: str, existing_categories: str) -> str:
     categories = existing_categories.split(",") if existing_categories else []
     cat_str = ", ".join(categories)
     instruction = (
-        f"Existing categories: {cat_str}\n"
-        "Read the case study and generate a generic, brief, clear, category name that describes its subject area."
-        "The category name should not be more than 2 words."
-        "Put similar case studies under one category."
-        "Respond with ONLY the category name." 
-        "DO NOT give any description or explanation.\n\nCase Study:\n"
+        f"Existing categories: {cat_str}\n\n"
+        "Your task is to read the case study and output ONLY the most suitable category name.\n"
+        "It should:\n"
+        "- Be brief (1–2 words)\n"
+        "- Be generic (not project/client-specific)\n"
+        "- Match an existing category if similar exists\n"
+        "- Otherwise, create a new generic category name\n\n"
+        "**IMPORTANT: Output only the category name — no prefix, no description, no explanation, and no sentence.**\n\n"
+        "Case Study Text:\n"
     )
+
     prompt = instruction + text[:3500]
 
     output = llm.invoke([
