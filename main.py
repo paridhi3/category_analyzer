@@ -150,10 +150,10 @@ def create_vector_store(text):
     chunks = splitter.split_text(text)
 
     embedding_model = AzureOpenAIEmbeddings(
-        azure_deployment=embed_deployment,
-        openai_api_version=api_version,
-        azure_endpoint=api_base,
-        api_key=api_key
+        azure_deployment="text-embedding-ada-002",
+        openai_api_version=os.getenv("API_VERSION"),
+        azure_endpoint="https://gen-cim-eas-dep-genai-train-openai.openai.azure.com/",
+        chunk_size=500
     )
 
     vector_store = Chroma.from_texts(
@@ -229,5 +229,3 @@ if selected_files:
             for i, chat in enumerate(st.session_state.chat_history, 1):
                 st.markdown(f"**You {i}:** {chat['user']}")
                 st.markdown(f"**Bot {i}:** {chat['bot']}")
-
-
