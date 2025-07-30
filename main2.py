@@ -133,7 +133,7 @@ selected_chat_file = st.selectbox("Choose a file for chat:", summary_files, key=
 if selected_chat_file:
     file_key = selected_chat_file.replace(".", "_")
 
-    # Initialize RAG and session state if not already
+    # === Initialize session state ===
     if f"qa_chain_{file_key}" not in st.session_state:
         file_text = supported_files[selected_chat_file]
         vectorstore = create_vector_store(file_text, file_key)
@@ -142,23 +142,30 @@ if selected_chat_file:
         st.session_state[f"chat_history_{file_key}"] = []
 
     qa_chain = st.session_state[f"qa_chain_{file_key}"]
+    chat_history = st.session_state[f"chat_history_{file_key}"]
 
     # === Reset Button ===
     if st.button("🔄 Reset Chat", key=f"reset_{file_key}", help="Reset chat history"):
-        st.session_state[f"chat_history_{file_key}"].clear()
+        chat_history.clear()
         st.rerun()
 
-    # === Chat Input and Interaction ===
+    # === Display Chat History as Messages ===
+    for msg in chat_history:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    # === Chat Input ===
     user_input = st.chat_input("Type your question:")
     if user_input:
+        with st.chat_message("user"):
+            st.markdown(user_input)
+
         response = qa_chain({"query": user_input})
         answer = response.get("result", "❌ No answer found.")
 
-        # Save interaction
-        st.session_state[f"chat_history_{file_key}"].append({"role": "user", "content": user_input})
-        st.session_state[f"chat_history_{file_key}"].append({"role": "assistant", "content": answer})
+        with st.chat_message("assistant"):
+            st.markdown(answer)
 
-    # === Display Chat History ===
-    for msg in st.session_state[f"chat_history_{file_key}"]:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+        # Save to session
+        chat_history.append({"role": "user", "content": user_input})
+        chat_history.append({"role": "assistant", "content": answer})
