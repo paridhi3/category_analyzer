@@ -96,57 +96,55 @@
 #         category = run_categorization_agent(summary, [])
 #         st.markdown(f"**📁 Category:** {category}")
 
-import streamlit as st
-from dotenv import load_dotenv
+# main.py
+
 import os
-import fitz  # PyMuPDF
-import docx
-from pptx import Presentation
+import streamlit as st
+from langchain_community.document_loaders import AzureBlobStorageContainerLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
-from langchain_openai import AzureOpenAIEmbeddings
-from langchain.chat_models import AzureChatOpenAI
-from langchain.chains import RetrievalQA
+from langchain_community.vectorstores import Chroma
 from langchain.memory import ConversationBufferMemory
+from langchain.chains import RetrievalQA
+from langchain.chat_models import AzureChatOpenAI
+from langchain.embeddings import AzureOpenAIEmbeddings
 
-# 🌱 Load environment variables
-load_dotenv()
+from agents.reader_agent import run_reader_agent
+from agents.categorizer_agent import run_categorization_agent
+
+# === Streamlit Setup ===
+st.set_page_config(page_title="Case Study Categorizer", layout="wide")
+st.title("📁 Case Study Categorizer")
+
+# === Load Documents from Azure Blob Storage ===
+@st.cache_resource
+def load_documents():
+    loader = AzureBlobStorageContainerLoader(
+        conn_str=os.getenv("AZURE_STORAGE_CONNECTION_STRING"),
+        container=os.getenv("AZURE_STORAGE_CONTAINER_NAME")
+    )
+    return loader.load()
+
+documents = load_documents()
+
+# === Prepare a dictionary of supported file names and contents ===
+supported_files = {}
+for doc in documents:
+    source_path = doc.metadata.get("source", "Unknown source")
+    file_name = os.path.basename(source_path)
+    if file_name.lower().endswith(('.pdf', '.pptx')):
+        supported_files[file_name] = doc.page_content
+
+# === Sidebar: File Selection ===
+selected_files = st.sidebar.multiselect("📂 Select file(s)", options=list(supported_files.keys()))
+
+# === Embed Config ===
 api_key = os.getenv("AZURE_OPENAI_API_KEY")
-api_base = os.getenv("AZURE_OPENAI_END_POINT")  # e.g. https://your-resource-name.openai.azure.com
-api_version = os.getenv("API_VERSION")  # e.g. 2023-05-15
-chat_deployment = os.getenv("MODEL_NAME")  # chat model name
-embed_deployment = "text-embedding-ada-002"  # embedding model name
+api_base = os.getenv("AZURE_OPENAI_END_POINT")
+api_version = os.getenv("API_VERSION")
+embed_deployment = os.getenv("AZURE_OPENAI_EMBED_DEPLOYMENT")
+chat_deployment = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT")
 
-# 🎨 Streamlit UI setup
-st.set_page_config(page_title="📚 Memory-Aware RAG Assistant", layout="wide")
-st.title("📚 Memory-Aware RAG Q&A Assistant")
-
-# 🚨 Validate environment
-if not all([api_key, api_base, api_version, chat_deployment, embed_deployment]):
-    st.error("❌ Missing one or more Azure OpenAI environment variables.")
-    st.stop()
-
-# 📄 File text extraction functions
-@st.cache_data
-def extract_text_from_pdf(pdf_file):
-    doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
-    return "\n".join(page.get_text() for page in doc)
-
-@st.cache_data
-def extract_text_from_docx(docx_file):
-    doc = docx.Document(docx_file)
-    return "\n".join(para.text for para in doc.paragraphs)
-
-@st.cache_data
-def extract_text_from_txt(txt_file):
-    return txt_file.read().decode("utf-8")
-
-@st.cache_data
-def extract_text_from_pptx(pptx_file):
-    prs = Presentation(pptx_file)
-    return "\n".join(shape.text for slide in prs.slides for shape in slide.shapes if hasattr(shape, "text"))
-
-# 🧠 Create vector store
+# === Create Vector Store ===
 def create_vector_store(text):
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     chunks = splitter.split_text(text)
@@ -167,7 +165,7 @@ def create_vector_store(text):
     vector_store.persist()
     return vector_store
 
-# 🔎 Set up QA chain
+# === Setup QA Chain ===
 def get_qa_chain(vectorstore):
     memory = ConversationBufferMemory(
         memory_key="chat_history",
@@ -191,34 +189,30 @@ def get_qa_chain(vectorstore):
     )
     return qa_chain
 
-# 📤 File upload section
-uploaded_files = st.file_uploader("📄 Upload Documents", type=["pdf", "docx", "txt", "pptx"], accept_multiple_files=True)
+# === Main Section: Reader + Categorizer ===
+all_text = ""
+if selected_files:
+    for file in selected_files:
+        st.subheader(f"📝 Summary of `{file}`")
+        text = supported_files[file]
+        all_text += "\n" + text  # For RAG vector store
 
-if uploaded_files:
-    all_text = ""
-    for file in uploaded_files:
-        if file.type == "application/pdf":
-            all_text += extract_text_from_pdf(file)
-            st.success(f"✅ Processed PDF: {file.name}")
-        elif file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            all_text += extract_text_from_docx(file)
-            st.success(f"✅ Processed DOCX: {file.name}")
-        elif file.type == "text/plain":
-            all_text += extract_text_from_txt(file)
-            st.success(f"✅ Processed TXT: {file.name}")
-        elif file.type == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-            all_text += extract_text_from_pptx(file)
-            st.success(f"✅ Processed PPTX: {file.name}")
-        else:
-            st.warning(f"⚠️ Unsupported file type: {file.name}")
+        # 💡 Agent 1: Reader
+        summary = run_reader_agent(text)
+        st.markdown(summary)
 
-    # 💾 Initialize vector store and chain
+        # 📌 Agent 2: Categorizer
+        category = run_categorization_agent(summary, [])
+        st.markdown(f"**📁 Category:** {category}")
+
+# === Initialize Vector Store and QA Chain ===
+if selected_files:
     if "vectorstore" not in st.session_state:
         st.session_state.vectorstore = create_vector_store(all_text)
         st.session_state.qa_chain = get_qa_chain(st.session_state.vectorstore)
         st.session_state.chat_history = []
 
-    # 💬 Sidebar chatbot
+    # 💬 Sidebar Chatbot
     st.sidebar.title("💬 Ask the Chatbot")
     user_question = st.sidebar.text_input("Ask a question:")
 
@@ -229,12 +223,11 @@ if uploaded_files:
         st.markdown(f"**You asked:** {user_question}")
         st.markdown(f"**Answer:** {answer}")
 
-    # 🧾 Chat history display
+    # 🧾 Chat History
     if st.session_state.chat_history:
         with st.expander("📜 Chat History"):
             for i, chat in enumerate(st.session_state.chat_history, 1):
                 st.markdown(f"**You {i}:** {chat['user']}")
                 st.markdown(f"**Bot {i}:** {chat['bot']}")
-else:
-    st.info("👆 Upload one or more documents to begin.")
+
 
