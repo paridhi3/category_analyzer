@@ -1,18 +1,21 @@
-KeyError: 'chunk_size'
+pydantic_core._pydantic_core.ValidationError: 1 validation error for AzureOpenAIEmbeddings
+openai_api_key
+  Extra inputs are not permitted [type=extra_forbidden, input_value='9Wks5k3HxRupEoRxfJIhi36P...CYeBjFXJ3w3AAABACOGy0GL', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
 
 File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 128, in exec_func_with_error_handling
     result = func()
 File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 669, in code_to_exec
     exec(code, module.__dict__)  # noqa: S102
     ~~~~^^^^^^^^^^^^^^^^^^^^^^^
-File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\main.py", line 211, in <module>
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\main.py", line 212, in <module>
     st.session_state.vectorstore = create_vector_store(all_text)
                                    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
 File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\main.py", line 152, in create_vector_store
     embedding_model = AzureOpenAIEmbeddings(
         azure_deployment=embed_deployment,
-    ...<2 lines>...
-        api_key=api_key
+    ...<3 lines>...
+        chunk_size=500
     )
 File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain_core\_api\deprecation.py", line 222, in warn_if_direct_instance
     return wrapped(self, *args, **kwargs)
@@ -20,6 +23,3 @@ File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Li
     return wrapped(self, *args, **kwargs)
 File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\pydantic\main.py", line 253, in __init__
     validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
-File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain_community\embeddings\azure_openai.py", line 105, in validate_environment
-    values["chunk_size"] = min(values["chunk_size"], 2048)
-                               ~~~~~~^^^^^^^^^^^^^^
