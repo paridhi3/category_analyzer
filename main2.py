@@ -43,7 +43,16 @@ api_version = os.getenv("API_VERSION")
 embed_deployment = os.getenv("AZURE_OPENAI_EMBED_DEPLOYMENT")
 chat_deployment = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT")
 
-# === Function to create vector store per file ===
+# === create vector store per file after sanitizing file name ===
+import re
+
+def sanitize_name(file_name: str) -> str:
+    # Remove extension and replace invalid characters with underscores
+    name = os.path.splitext(file_name)[0]
+    name = re.sub(r'[^a-zA-Z0-9._-]', '_', name)
+    name = name.strip("_")  # Remove leading/trailing underscores
+    return f"ragstore_{name}"  # Ensure name starts with valid char
+
 def create_vector_store(text, file_name):
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     chunks = splitter.split_text(text)
@@ -55,14 +64,17 @@ def create_vector_store(text, file_name):
         chunk_size=500
     )
 
+    safe_name = sanitize_name(file_name)
+
     vector_store = Chroma.from_texts(
         chunks,
         embedding=embedding_model,
-        collection_name=f"rag_store_{file_name}",
-        persist_directory=f".chromadb_{file_name}"
+        collection_name=safe_name,
+        persist_directory=f".chromadb_{safe_name}"
     )
     vector_store.persist()
     return vector_store
+
 
 def get_qa_chain(vectorstore):
     memory = ConversationBufferMemory(
