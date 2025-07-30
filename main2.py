@@ -131,27 +131,34 @@ st.subheader("💬 Ask Questions About a File")
 selected_chat_file = st.selectbox("Choose a file for chat:", summary_files, key="chat_file")
 
 if selected_chat_file:
-    # Initialize RAG (vector store + QA chain) if not already
-    if f"qa_chain_{selected_chat_file}" not in st.session_state:
+    file_key = selected_chat_file.replace(".", "_")
+
+    # Initialize RAG and session state if not already
+    if f"qa_chain_{file_key}" not in st.session_state:
         file_text = supported_files[selected_chat_file]
-        vectorstore = create_vector_store(file_text, selected_chat_file.replace(".", "_"))
+        vectorstore = create_vector_store(file_text, file_key)
         qa_chain = get_qa_chain(vectorstore)
-        st.session_state[f"qa_chain_{selected_chat_file}"] = qa_chain
-        st.session_state[f"chat_history_{selected_chat_file}"] = []
+        st.session_state[f"qa_chain_{file_key}"] = qa_chain
+        st.session_state[f"chat_history_{file_key}"] = []
 
-    user_question = st.chat_input("Ask a question about the selected file:", key="user_question")
-    if user_question:
-        qa_chain = st.session_state[f"qa_chain_{selected_chat_file}"]
-        response = qa_chain({"query": user_question})
+    qa_chain = st.session_state[f"qa_chain_{file_key}"]
+
+    # === Reset Button ===
+    if st.button("🔄 Reset Chat", key=f"reset_{file_key}", help="Reset chat history"):
+        st.session_state[f"chat_history_{file_key}"].clear()
+        st.rerun()
+
+    # === Chat Input and Interaction ===
+    user_input = st.chat_input("Type your question:")
+    if user_input:
+        response = qa_chain({"query": user_input})
         answer = response.get("result", "❌ No answer found.")
-        st.session_state[f"chat_history_{selected_chat_file}"].append(
-            {"user": user_question, "bot": answer}
-        )
-        # st.markdown(f"**You asked:** {user_question}")
-        # st.markdown(f"**Answer:** {answer}")
 
-    # Show chat history
-    with st.expander("📜 Chat History"):
-        for i, chat in enumerate(st.session_state[f"chat_history_{selected_chat_file}"], 1):
-            st.markdown(f"**You {i}:** {chat['user']}")
-            st.markdown(f"**Bot {i}:** {chat['bot']}")
+        # Save interaction
+        st.session_state[f"chat_history_{file_key}"].append({"role": "user", "content": user_input})
+        st.session_state[f"chat_history_{file_key}"].append({"role": "assistant", "content": answer})
+
+    # === Display Chat History ===
+    for msg in st.session_state[f"chat_history_{file_key}"]:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
