@@ -110,62 +110,69 @@ def get_categories_and_summaries():
 
 results = get_categories_and_summaries()
 
-# === Show File-Category Table ===
-st.subheader("🗂 File Categories")
-df = pd.DataFrame(results)[["File Name", "Category"]]
-st.dataframe(df, use_container_width=True)
+# === Tabs for UI ===
+tab1, tab2, tab3 = st.tabs(["🗂 File Categories", "📄 File Summary", "💬 Chat with File"])
 
-# === Summary Viewer ===
-st.subheader("📄 View File Summary")
-summary_files = [r["File Name"] for r in results]
-selected_summary_file = st.selectbox("Choose a file to view summary:", summary_files)
+# === Tab 1: File Categories Table ===
+with tab1:
+    st.subheader("🗂 File Categories")
+    df = pd.DataFrame(results)[["File Name", "Category"]]
+    st.dataframe(df, use_container_width=True)
 
-if selected_summary_file:
-    summary = next((r["Summary"] for r in results if r["File Name"] == selected_summary_file), None)
-    if summary:
-        st.markdown(f"### Summary of `{selected_summary_file}`")
-        st.markdown(summary)
+# === Tab 2: File Summary Viewer ===
+with tab2:
+    st.subheader("📄 View File Summary")
+    summary_files = [r["File Name"] for r in results]
+    selected_summary_file = st.selectbox("Choose a file to view summary:", summary_files, key="summary_file")
 
-# === Chat Section ===
-st.subheader("💬 Ask Questions About a File")
-selected_chat_file = st.selectbox("Choose a file for chat:", summary_files, key="chat_file")
+    if selected_summary_file:
+        summary = next((r["Summary"] for r in results if r["File Name"] == selected_summary_file), None)
+        if summary:
+            st.markdown(f"### Summary of `{selected_summary_file}`")
+            st.markdown(summary)
 
-if selected_chat_file:
-    file_key = selected_chat_file.replace(".", "_")
+# === Tab 3: File Chatbot ===
+with tab3:
+    st.subheader("💬 Ask Questions About a File")
+    selected_chat_file = st.selectbox("Choose a file for chat:", summary_files, key="chat_file")
 
-    # === Initialize session state ===
-    if f"qa_chain_{file_key}" not in st.session_state:
-        file_text = supported_files[selected_chat_file]
-        vectorstore = create_vector_store(file_text, file_key)
-        qa_chain = get_qa_chain(vectorstore)
-        st.session_state[f"qa_chain_{file_key}"] = qa_chain
-        st.session_state[f"chat_history_{file_key}"] = []
+    if selected_chat_file:
+        file_key = selected_chat_file.replace(".", "_")
 
-    qa_chain = st.session_state[f"qa_chain_{file_key}"]
-    chat_history = st.session_state[f"chat_history_{file_key}"]
+        # Initialize session state
+        if f"qa_chain_{file_key}" not in st.session_state:
+            file_text = supported_files[selected_chat_file]
+            vectorstore = create_vector_store(file_text, file_key)
+            qa_chain = get_qa_chain(vectorstore)
+            st.session_state[f"qa_chain_{file_key}"] = qa_chain
+            st.session_state[f"chat_history_{file_key}"] = []
 
-    # === Reset Button ===
-    if st.button("🔄 Reset Chat", key=f"reset_{file_key}", help="Reset chat history"):
-        chat_history.clear()
-        st.rerun()
+        qa_chain = st.session_state[f"qa_chain_{file_key}"]
+        chat_history = st.session_state[f"chat_history_{file_key}"]
 
-    # === Display Chat History as Messages ===
-    for msg in chat_history:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+        # Reset Button
+        if st.button("🔄 Reset Chat", key=f"reset_{file_key}", help="Reset chat history"):
+            chat_history.clear()
+            st.rerun()
 
-    # === Chat Input ===
-    user_input = st.chat_input("Type your question:")
-    if user_input:
-        with st.chat_message("user"):
-            st.markdown(user_input)
+        # Show chat history
+        for msg in chat_history:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
 
-        response = qa_chain({"query": user_input})
-        answer = response.get("result", "❌ No answer found.")
+        # Chat Input
+        user_input = st.chat_input("Type your question:")
+        if user_input:
+            with st.chat_message("user"):
+                st.markdown(user_input)
 
-        with st.chat_message("assistant"):
-            st.markdown(answer)
+            response = qa_chain({"query": user_input})
+            answer = response.get("result", "❌ No answer found.")
 
-        # Save to session
-        chat_history.append({"role": "user", "content": user_input})
-        chat_history.append({"role": "assistant", "content": answer})
+            with st.chat_message("assistant"):
+                st.markdown(answer)
+
+            # Save to session
+            chat_history.append({"role": "user", "content": user_input})
+            chat_history.append({"role": "assistant", "content": answer})
+
