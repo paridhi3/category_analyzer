@@ -58,9 +58,10 @@ def create_vector_store(text, file_name):
     chunks = splitter.split_text(text)
 
     embedding_model = AzureOpenAIEmbeddings(
-        azure_deployment=embed_deployment,
-        openai_api_version=api_version,
-        azure_endpoint=api_base,
+        azure_deployment="text-embedding-ada-002",
+        openai_api_version=os.getenv("API_VERSION"),
+        azure_endpoint="https://gen-cim-eas-dep-genai-train-openai.openai.azure.com/",
+        # api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         chunk_size=500
     )
 
@@ -138,7 +139,7 @@ if selected_chat_file:
         st.session_state[f"qa_chain_{selected_chat_file}"] = qa_chain
         st.session_state[f"chat_history_{selected_chat_file}"] = []
 
-    user_question = st.text_input("Ask a question about the selected file:", key="user_question")
+    user_question = st.chat_input("Ask a question about the selected file:", key="user_question")
     if user_question:
         qa_chain = st.session_state[f"qa_chain_{selected_chat_file}"]
         response = qa_chain({"query": user_question})
@@ -146,8 +147,8 @@ if selected_chat_file:
         st.session_state[f"chat_history_{selected_chat_file}"].append(
             {"user": user_question, "bot": answer}
         )
-        st.markdown(f"**You asked:** {user_question}")
-        st.markdown(f"**Answer:** {answer}")
+        # st.markdown(f"**You asked:** {user_question}")
+        # st.markdown(f"**Answer:** {answer}")
 
     # Show chat history
     with st.expander("📜 Chat History"):
