@@ -1,9 +1,25 @@
-C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer>python main.py
-Traceback (most recent call last):
-  File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\main.py", line 7, in <module>
-    from categorizer import run_categorization_agent
-  File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\categorizer.py", line 59, in <module>
-    agent = create_tool_calling_agent(llm, tools, prompt_template)
-  File "C:\Users\703417007_agarwal\AppData\Roaming\Python\Python313\site-packages\langchain\agents\tool_calling_agent\base.py", line 93, in create_tool_calling_agent
-    raise ValueError(f"Prompt missing required variables: {missing_vars}")
-ValueError: Prompt missing required variables: {'agent_scratchpad'}
+KeyError: 'chunk_size'
+
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 128, in exec_func_with_error_handling
+    result = func()
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 669, in code_to_exec
+    exec(code, module.__dict__)  # noqa: S102
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\main.py", line 211, in <module>
+    st.session_state.vectorstore = create_vector_store(all_text)
+                                   ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\main.py", line 152, in create_vector_store
+    embedding_model = AzureOpenAIEmbeddings(
+        azure_deployment=embed_deployment,
+    ...<2 lines>...
+        api_key=api_key
+    )
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain_core\_api\deprecation.py", line 222, in warn_if_direct_instance
+    return wrapped(self, *args, **kwargs)
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain_core\_api\deprecation.py", line 222, in warn_if_direct_instance
+    return wrapped(self, *args, **kwargs)
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\pydantic\main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain_community\embeddings\azure_openai.py", line 105, in validate_environment
+    values["chunk_size"] = min(values["chunk_size"], 2048)
+                               ~~~~~~^^^^^^^^^^^^^^
