@@ -1,3 +1,10 @@
+embedding = AzureOpenAIEmbeddings(
+    azure_deployment="text-embedding-ada-002",
+    openai_api_version=os.getenv("API_VERSION"),
+    azure_endpoint="https://gen-cim-eas-dep-genai-train-openai.openai.azure.com/",
+    api_key=os.getenv("AZURE_OPENAI_API_KEY")
+)
+
 pydantic_core._pydantic_core.ValidationError: 1 validation error for AzureOpenAIEmbeddings
 openai_api_key
   Extra inputs are not permitted [type=extra_forbidden, input_value='9Wks5k3HxRupEoRxfJIhi36P...CYeBjFXJ3w3AAABACOGy0GL', input_type=str]
@@ -13,7 +20,7 @@ File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\main.py"
                                    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
 File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\main.py", line 152, in create_vector_store
     embedding_model = AzureOpenAIEmbeddings(
-        azure_deployment=embed_deployment,
+        azure_deployment="text-embedding-ada-002",
     ...<3 lines>...
         chunk_size=500
     )
