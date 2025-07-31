@@ -116,17 +116,23 @@ with tab1:
 #         if summary:
 #             st.markdown(f"### Summary of `{selected_summary_file}`")
 #             st.markdown(summary)
-if selected_summary_file:
-    if selected_summary_file not in results_cache:
-        results_cache[selected_summary_file] = process_file(selected_summary_file, supported_files[selected_summary_file])
+with tab2:
+    st.subheader("📄 View File Summary")
+    summary_files = list(supported_files.keys())
+    selected_summary_file = st.selectbox("Choose a file to view summary:", summary_files, key="summary_file")
 
-    summary = results_cache[selected_summary_file]["Summary"]
-    domain = results_cache[selected_summary_file]["Domain"]
-    category = results_cache[selected_summary_file]["Category"]
+    if selected_summary_file:
+        # Run agent only if not already cached
+        if selected_summary_file not in results_cache:
+            results_cache[selected_summary_file] = process_file(selected_summary_file, supported_files[selected_summary_file])
 
-    st.markdown(f"### Summary of `{selected_summary_file}`")
-    st.markdown(summary)
-    st.info(f"**Category:** {category} | **Domain:** {domain}")
+        summary = results_cache[selected_summary_file]["Summary"]
+        domain = results_cache[selected_summary_file]["Domain"]
+        category = results_cache[selected_summary_file]["Category"]
+
+        st.markdown(f"### Summary of `{selected_summary_file}`")
+        st.markdown(summary)
+        st.info(f"**Category:** {category} | **Domain:** {domain}")
 
 
 # === Tab 3: File Chatbot ===
