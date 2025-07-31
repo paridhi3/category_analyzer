@@ -86,7 +86,7 @@ def process_file(file_name, text):
 results_cache = {}
 
 # === Tabs for UI ===
-# tab1, tab2, tab3, tab4 = st.tabs(["🗂 File Categories", "📄 File Summary", "💬 Chat with File", "Cr"])
+tab1, tab2, tab3, tab4 = st.tabs(["🗂 File Categories", "📄 File Summary", "💬 Chat with File", "📊 Cross-File Chat"])[3]
 
 # === Tab 1: File Categories Table ===
 # with tab1:
@@ -180,9 +180,6 @@ with tab3:
             chat_history.append({"role": "user", "content": user_input})
             chat_history.append({"role": "assistant", "content": answer})
 
-
-tab4 = st.tabs(["🗂 File Categories", "📄 File Summary", "💬 Chat with File", "📊 Cross-File Chat"])[3]
-
 with tab4:
     st.subheader("📊 Ask Questions Across All Files")
     if not results_cache:
@@ -200,4 +197,3 @@ with tab4:
             with st.spinner("Thinking..."):
                 result = cross_qa.run(cross_query)
                 st.markdown(result)
-
