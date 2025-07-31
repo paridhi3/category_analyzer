@@ -1,3 +1,10 @@
-st.text(chunks):
+TypeError: cannot unpack non-iterable DeltaGenerator object
 
-['Case Study \n\nChallenges\n\nThe client having challenges to no common, referenceable source of corporate data definitions which includes:\n\nA unified business glossary of business and financial terms and report fields\n\nThe ability to understand which reports use which data definitions\n\nThe value and trusted nature of each report\n\nAn accurate view of the calculations/algorithms used in company metrics and KPIs\n\nThe ability to trace data to its original source', 'The ability to trace data to its original source\n\nIntelligent data governance - Optimize, protect, and leverage data as a corporate asset across the data lifecycle.\n\nSolution\n\nCreating data catalog content and data dictionary for raw and analytics datasets, business glossary and KPI definition document\n\nSupport implementation and liaise with technical teams. Drive business and functional requirements.\n\nDefine Business and functional requirements for Collibra artefacts readiness like', 'Process and workflow design\n\nGovernance and stewardship design\n\nData classification\n\nData Helpdesk\n\nCreating end-to-end lineage and visibility of metadata\n\nApplying Policies on Data Sharing Terms for respective datasets\n\nThe Client\n\nContent creation for 40 plus datasets and its lineage with physical and business layer\n\nRedefine the KPI’s, Measures (KPI’s – 80 plus, Measures – 130 plus), and creating its lineage.', 'Defined custom workflows (using Core JAVA API’s) for proposing business terms, accounts process – charts of accounts\n\n400 plus business glossary terms\n\nWork in-progress for integration of Service Now, DQ Profiles from Ataccama, and policies on Data Sharing terms\n\nDelivered Impact\n\nA Trusted, Global Innovator in Retail Pharmacy']
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 128, in exec_func_with_error_handling
+    result = func()
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 669, in code_to_exec
+    exec(code, module.__dict__)  # noqa: S102
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\main.py", line 89, in <module>
+    tab1, tab2, tab3, tab4 = st.tabs(["🗂 File Categories", "📄 File Summary", "💬 Chat with File", "📊 Cross-File Chat"])[3]
+    ^^^^^^^^^^^^^^^^^^^^^^
