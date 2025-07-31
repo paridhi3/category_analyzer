@@ -3,24 +3,37 @@
 from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.agents import AgentExecutor, create_tool_calling_agent
-from llm_config import llm
+from config import llm
+
+# existing_categories = ["digital transformation", "data migration", "data governance", "data quality", "data security"]
 
 @tool
 def categorize(summary: str, existing_categories: str) -> str:
     """
-    Assigns the summary to an existing category or creates a new one.
-    Output only the category name.
+    Assigns the summary to one of the provided existing categories.
+    Output only the category name from the existing list.
     """
     categories = existing_categories.split(",") if existing_categories else []
     cat_str = ", ".join(categories)
 
+    # prompt = (
+    #     f"Existing categories: {cat_str}\n\n"
+    #     "Read the case study summary and output ONLY the most suitable category name.\n"
+    #     "- Be brief (1–2 words)\n"
+    #     "- Be generic (not client-specific)\n"
+    #     "- Match existing category if similar exists\n"
+    #     "**IMPORTANT: Output only the category name — no project titles, client names, prefix, no description, no explanation, no sentence, and no multi-line output.**\n\n"
+    #     "Case Study Summary:\n"
+    #     f"{summary}"
+    # )
+
     prompt = (
-        f"Existing categories: {cat_str}\n\n"
-        "Read the case study summary and output ONLY the most suitable category name.\n"
+        f"Available categories: {cat_str}\n\n"
+        "Read the case study summary below and output ONLY the most suitable category name from the existing list.\n"
         "- Be brief (1–2 words)\n"
-        "- Be generic (not client-specific)\n"
-        "- Match existing if similar exists\n"
-        "- Otherwise create a new generic category name\n\n"
+        "- Match exactly one category from the list\n"
+        "- Do NOT create new categories\n"
+        "**IMPORTANT: Output only the category name — no project titles, no description, no explanation, no client name, no sentence, and no multi-line output.**\n\n"
         "Case Study Summary:\n"
         f"{summary}"
     )
@@ -45,8 +58,23 @@ Existing Categories: {existing_categories}
 agent = create_tool_calling_agent(llm, tools, prompt_template)
 categorizer_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
-def run_categorization_agent(summary: str, existing_categories: list) -> str:
+def run_categorization_agent(summary: str, existing_categories: list = None) -> str:
+    existing_categories = [
+        "Digital Transformation",
+        "Data Migration",
+        "Data Governance",
+        "Data Quality",
+        "Data Security",
+        "Data Analytics", 
+        "Data Integration",
+        "Master Data Management",
+    ]
+    
+    # Ensure categories are in a comma-separated format
+    existing_categories_str = ", ".join(existing_categories)
+    
     return categorizer_executor.invoke({
         "text": summary,
-        "existing_categories": ",".join(existing_categories)
+        "existing_categories": existing_categories_str
     })["output"]
+
