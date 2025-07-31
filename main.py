@@ -71,38 +71,63 @@ def get_qa_chain(vectorstore):
         return_source_documents=False
     )
 
-# === Caching agent outputs ===
-@st.cache_data(show_spinner="Running categorization...")
-def get_categories_and_summaries():
-    results = []
-    for file, text in supported_files.items():
-        summary = run_reader_agent(text)
-        category = run_categorization_agent(summary, [])
-        results.append({"File Name": file, "Category": category, "Summary": summary})
-    return results
+# === Caching per-file processing ===
+@st.cache_data(show_spinner="🔍 Processing file...", ttl=3600)
+def process_file(file_name, text):
+    agent_output = run_reader_agent(text)
+    category = run_categorization_agent(agent_output["summary"])
+    return {
+        "File Name": file_name,
+        "Category": category,
+        "Domain": agent_output["domain"],
+        "Summary": agent_output["summary"]
+    }
 
-results = get_categories_and_summaries()
+results_cache = {}
 
 # === Tabs for UI ===
-tab1, tab2, tab3 = st.tabs(["🗂 File Categories", "📄 File Summary", "💬 Chat with File"])
+# tab1, tab2, tab3, tab4 = st.tabs(["🗂 File Categories", "📄 File Summary", "💬 Chat with File", "Cr"])
 
 # === Tab 1: File Categories Table ===
+# with tab1:
+#     st.subheader("🗂 File Categories")
+#     df = pd.DataFrame(results)[["File Name", "Category"]]
+#     st.dataframe(df, use_container_width=True)
 with tab1:
     st.subheader("🗂 File Categories")
-    df = pd.DataFrame(results)[["File Name", "Category"]]
-    st.dataframe(df, use_container_width=True)
+    results_cache.update({file: process_file(file, text) for file, text in supported_files.items()})
+    if results_cache:
+        df = pd.DataFrame(results_cache.values())[
+            ["File Name", "Category", "Domain"]
+        ]
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.info("Click the button above to process files.")
+
 
 # === Tab 2: File Summary Viewer ===
-with tab2:
-    st.subheader("📄 View File Summary")
-    summary_files = [r["File Name"] for r in results]
-    selected_summary_file = st.selectbox("Choose a file to view summary:", summary_files, key="summary_file")
+# with tab2:
+#     st.subheader("📄 View File Summary")
+#     summary_files = [r["File Name"] for r in results]
+#     selected_summary_file = st.selectbox("Choose a file to view summary:", summary_files, key="summary_file")
 
-    if selected_summary_file:
-        summary = next((r["Summary"] for r in results if r["File Name"] == selected_summary_file), None)
-        if summary:
-            st.markdown(f"### Summary of `{selected_summary_file}`")
-            st.markdown(summary)
+#     if selected_summary_file:
+#         summary = next((r["Summary"] for r in results if r["File Name"] == selected_summary_file), None)
+#         if summary:
+#             st.markdown(f"### Summary of `{selected_summary_file}`")
+#             st.markdown(summary)
+if selected_summary_file:
+    if selected_summary_file not in results_cache:
+        results_cache[selected_summary_file] = process_file(selected_summary_file, supported_files[selected_summary_file])
+
+    summary = results_cache[selected_summary_file]["Summary"]
+    domain = results_cache[selected_summary_file]["Domain"]
+    category = results_cache[selected_summary_file]["Category"]
+
+    st.markdown(f"### Summary of `{selected_summary_file}`")
+    st.markdown(summary)
+    st.info(f"**Category:** {category} | **Domain:** {domain}")
+
 
 # === Tab 3: File Chatbot ===
 with tab3:
@@ -148,3 +173,25 @@ with tab3:
             # Save to session
             chat_history.append({"role": "user", "content": user_input})
             chat_history.append({"role": "assistant", "content": answer})
+
+
+tab4 = st.tabs(["🗂 File Categories", "📄 File Summary", "💬 Chat with File", "📊 Cross-File Chat"])[3]
+
+with tab4:
+    st.subheader("📊 Ask Questions Across All Files")
+    if not results_cache:
+        st.warning("Please run the categorization first.")
+    else:
+        df = pd.DataFrame(results_cache.values())
+        meta_texts = [
+            f"{row['Summary']}\nFile: {row['File Name']}\nCategory: {row['Category']}\nDomain: {row['Domain']}"
+            for _, row in df.iterrows()
+        ]
+        vs = Chroma.from_texts(meta_texts, embedding=embedding_model, collection_name="case_meta", persist_directory=".chromadb_case_meta")
+        cross_qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=vs.as_retriever())
+        cross_query = st.text_input("Ask a question across all case studies:")
+        if cross_query:
+            with st.spinner("Thinking..."):
+                result = cross_qa.run(cross_query)
+                st.markdown(result)
+
