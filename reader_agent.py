@@ -3,16 +3,17 @@
 from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.agents import AgentExecutor, create_tool_calling_agent
-from llm_config import llm
+from config import llm
 
 @tool
-def summarize_case_study(text: str) -> str:
+def review_case_study(text: str) -> str:
     """
-    Reads the case study and summarizes the key subject area and topic.
-    Output should be concise (3–5 sentences max).
+    Thoroughly reviews the case study and delivers a detailed write-up.
     """
     prompt = (
-        "Summarize the subject area and key topic of the following case study in 3–5 sentences.\n\n"
+        "Carefully read and analyze the provided case study. \n\n"
+        "Identify the main themes, key issues, and relevant context. \n\n"
+        "Then, write a comprehensive and well-structured summary that conveys all critical insights\n\n"
         f"{text[:3500]}"
     )
     output = llm.invoke([
@@ -21,10 +22,13 @@ def summarize_case_study(text: str) -> str:
     ])
     return output.content.strip()
 
-tools = [summarize_case_study]
+tools = [review_case_study]
 
 prompt_template = ChatPromptTemplate.from_template("""
-You are a summarization agent. Your task is to extract the main subject area and key points from the case study.
+You are tasked with reading the provided case study thoroughly and performing the following steps:
+1. Identify the Main Subject Area
+2. Extract Key Points
+3. Present a Detailed Write-up about the case study
 
 Case Study:
 {text}
