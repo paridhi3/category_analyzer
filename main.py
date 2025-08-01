@@ -86,13 +86,9 @@ def process_file(file_name, text):
 results_cache = {}
 
 # === Tabs for UI ===
-tab1, tab2, tab3, tab4 = st.tabs(["🗂 File Categories", "📄 File Summary", "💬 Chat with File", "📊 Cross-File Chat"])[3]
+tab1, tab2, tab3, tab4 = st.tabs(["🗂 File Categories", "📄 File Summary", "💬 Chat with File", "📊 Cross-File Chat"])
 
 # === Tab 1: File Categories Table ===
-# with tab1:
-#     st.subheader("🗂 File Categories")
-#     df = pd.DataFrame(results)[["File Name", "Category"]]
-#     st.dataframe(df, use_container_width=True)
 with tab1:
     st.subheader("🗂 File Categories")
     results_cache.update({file: process_file(file, text) for file, text in supported_files.items()})
@@ -106,16 +102,6 @@ with tab1:
 
 
 # === Tab 2: File Summary Viewer ===
-# with tab2:
-#     st.subheader("📄 View File Summary")
-#     summary_files = [r["File Name"] for r in results]
-#     selected_summary_file = st.selectbox("Choose a file to view summary:", summary_files, key="summary_file")
-
-#     if selected_summary_file:
-#         summary = next((r["Summary"] for r in results if r["File Name"] == selected_summary_file), None)
-#         if summary:
-#             st.markdown(f"### Summary of `{selected_summary_file}`")
-#             st.markdown(summary)
 with tab2:
     st.subheader("📄 View File Summary")
     summary_files = list(supported_files.keys())
