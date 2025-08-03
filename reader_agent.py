@@ -297,9 +297,9 @@ tab1, tab2, tab3, tab4 = st.tabs(["🗂 File Categories", "📄 File Summary", "
 # === Tab 1: File Categories Table ===
 with tab1:
     st.subheader("🗂 File Categories")
-    results_cache.update({file: process_file(file, text) for file, text in supported_files.items()})
-    if results_cache:
-        df = pd.DataFrame(results_cache.values())[
+    metadata_cache.update({file: process_file(file, text) for file, text in supported_files.items()})
+    if metadata_cache:
+        df = pd.DataFrame(metadata_cache.values())[
             ["File Name", "Category", "Domain"]
         ]
         st.dataframe(df, use_container_width=True)
@@ -313,12 +313,12 @@ with tab2:
     selected_summary_file = st.selectbox("Choose a file to view summary:", summary_files, key="summary_file")
 
     if selected_summary_file:
-        if selected_summary_file not in results_cache:
-            results_cache[selected_summary_file] = process_file(selected_summary_file, supported_files[selected_summary_file])
+        if selected_summary_file not in metadata_cache:
+            metadata_cache[selected_summary_file] = process_file(selected_summary_file, supported_files[selected_summary_file])
 
-        summary = results_cache[selected_summary_file]["Summary"]
-        domain = results_cache[selected_summary_file]["Domain"]
-        category = results_cache[selected_summary_file]["Category"]
+        summary = metadata_cache[selected_summary_file]["Summary"]
+        domain = metadata_cache[selected_summary_file]["Domain"]
+        category = metadata_cache[selected_summary_file]["Category"]
 
         st.markdown(f"### Summary of `{selected_summary_file}`")
         st.markdown(summary)
@@ -367,10 +367,10 @@ with tab3:
 # === Tab 4: Cross-File Chat ===
 with tab4:
     st.subheader("📊 Ask Questions Across All Files")
-    if not results_cache:
+    if not metadata_cache:
         st.warning("Please run the categorization first.")
     else:
-        df = pd.DataFrame(results_cache.values())
+        df = pd.DataFrame(metadata_cache.values())
         meta_texts = [
             f"{row['Summary']}\nFile: {row['File Name']}\nCategory: {row['Category']}\nDomain: {row['Domain']}"
             for _, row in df.iterrows()
