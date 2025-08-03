@@ -315,13 +315,13 @@ with tab2:
         if selected_summary_file not in results_cache:
             results_cache[selected_summary_file] = process_file(selected_summary_file, supported_files[selected_summary_file])
 
-        summary = results_cache[selected_summary_file]["Summary"]
-        domain = results_cache[selected_summary_file]["Domain"]
-        category = results_cache[selected_summary_file]["Category"]
+        summary = results_cache[selected_summary_file]["summary"]
+        domain = results_cache[selected_summary_file]["domain"]
+        category = results_cache[selected_summary_file]["category"]
 
         st.markdown(f"### Summary of `{selected_summary_file}`")
-        st.markdown(summary)
         st.info(f"**Category:** {category} | **Domain:** {domain}")
+        st.markdown(summary)
 
 # === Tab 3: File Chatbot ===
 with tab3:
@@ -371,7 +371,7 @@ with tab4:
     else:
         df = pd.DataFrame(results_cache.values())
         meta_texts = [
-            f"{row['Summary']}\nFile: {row['File Name']}\nCategory: {row['Category']}\nDomain: {row['Domain']}"
+            f"{row['summary']}\nFile: {row['file_name']}\nCategory: {row['category']}\nDomain: {row['domain']}"
             for _, row in df.iterrows()
         ]
         vs = Chroma.from_texts(meta_texts, embedding=embedding_model, collection_name="case_meta", persist_directory=".chromadb_case_meta")
