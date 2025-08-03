@@ -295,9 +295,12 @@ with tab1:
     st.subheader("🗂 File Categories")
     results_cache.update({file: process_file(file, text) for file, text in supported_files.items()})
     if results_cache:
-        df = pd.DataFrame(results_cache.values())[
-            ["File Name", "Category", "Domain"]
-        ]
+        df = pd.DataFrame(results_cache.values())[["file_name", "category", "domain"]]
+        df = df.rename(columns={
+            "file_name": "File Name",
+            "category": "Category",
+            "domain": "Domain"
+        })
         st.dataframe(df, use_container_width=True)
     else:
         st.info("Click the button above to process files.")
