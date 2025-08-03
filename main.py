@@ -224,18 +224,67 @@ def sanitize_name(file_name: str) -> str:
     name = re.sub(r'[^a-zA-Z0-9._-]', '_', name).strip("_")
     return f"ragstore_{name}"
 
-def create_vector_store(text, file_name):
+# def create_vector_store(text, file_name):
+#     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+#     chunks = splitter.split_text(text)
+#     safe_name = sanitize_name(file_name)
+#     vector_store = Chroma.from_texts(
+#         chunks,
+#         embedding=embedding_model,
+#         collection_name=safe_name,
+#         persist_directory=f".chromadb_{safe_name}"
+#     )
+#     vector_store.persist()
+#     return vector_store
+
+def load_or_create_vector_store(text, file_name):
+    safe_name = sanitize_name(file_name)
+    persist_dir = f".chromadb_{safe_name}"
+
+    # If the vector store already exists, just load it
+    if os.path.exists(persist_dir):
+        return Chroma(
+            collection_name=safe_name,
+            embedding_function=embedding_model,
+            persist_directory=persist_dir,
+        )
+
+    # Otherwise, create it from text chunks
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     chunks = splitter.split_text(text)
-    safe_name = sanitize_name(file_name)
+
     vector_store = Chroma.from_texts(
         chunks,
         embedding=embedding_model,
         collection_name=safe_name,
-        persist_directory=f".chromadb_{safe_name}"
+        persist_directory=persist_dir
     )
     vector_store.persist()
     return vector_store
+
+
+def load_or_create_metadata_vectorstore(metadata_cache):
+    safe_name = "metadata_vectorstore"
+    persist_dir = f".chromadb_{safe_name}"
+    if os.path.exists(persist_dir):
+        return Chroma(
+            collection_name=safe_name,
+            embedding_function=embedding_model,
+            persist_directory=persist_dir,
+        )
+    meta_texts = [
+        f"File Name: {meta.get('file_name', '')}\n"
+        f"Category: {meta.get('category', '')}\n"
+        f"Domain: {meta.get('domain', '')}\n"
+        f"Summary:\n{meta.get('summary', '')}"
+        for meta in metadata_cache.values()
+    ]
+    vs = Chroma.from_texts(
+        meta_texts, embedding=embedding_model, collection_name=safe_name, persist_directory=persist_dir
+    )
+    vs.persist()
+    return vs
+
 
 def get_qa_chain(vectorstore):
     memory = ConversationBufferMemory(
@@ -323,18 +372,70 @@ with tab2:
         st.info(f"**Category:** {category} | **Domain:** {domain}")
         st.markdown(summary)
 
-# === Tab 3: File Chatbot ===
+# # === Tab 3: File Chatbot ===
+# with tab3:
+#     st.subheader("💬 Ask Questions About a File")
+#     selected_chat_file = st.selectbox("Choose a file for chat:", summary_files, key="chat_file")
+
+#     if selected_chat_file:
+#         file_key = selected_chat_file.replace(".", "_")
+
+#         if f"qa_chain_{file_key}" not in st.session_state:
+#             file_text = supported_files[selected_chat_file]
+#             vectorstore = create_vector_store(file_text, file_key)
+#             qa_chain = get_qa_chain(vectorstore)
+#             st.session_state[f"qa_chain_{file_key}"] = qa_chain
+#             st.session_state[f"chat_history_{file_key}"] = []
+
+#         qa_chain = st.session_state[f"qa_chain_{file_key}"]
+#         chat_history = st.session_state[f"chat_history_{file_key}"]
+
+#         if st.button("🔄 Reset Chat", key=f"reset_{file_key}", help="Reset chat history"):
+#             chat_history.clear()
+#             st.rerun()
+
+#         for msg in chat_history:
+#             with st.chat_message(msg["role"]):
+#                 st.markdown(msg["content"])
+
+#         user_input = st.chat_input("Type your question:")
+#         if user_input:
+#             with st.chat_message("user"):
+#                 st.markdown(user_input)
+
+#             response = qa_chain({"query": user_input})
+#             answer = response.get("result", "❌ No answer found.")
+
+#             with st.chat_message("assistant"):
+#                 st.markdown(answer)
+
+#             chat_history.append({"role": "user", "content": user_input})
+#             chat_history.append({"role": "assistant", "content": answer})
 with tab3:
     st.subheader("💬 Ask Questions About a File")
+    summary_files = list(supported_files.keys())
     selected_chat_file = st.selectbox("Choose a file for chat:", summary_files, key="chat_file")
 
     if selected_chat_file:
         file_key = selected_chat_file.replace(".", "_")
 
         if f"qa_chain_{file_key}" not in st.session_state:
-            file_text = supported_files[selected_chat_file]
-            vectorstore = create_vector_store(file_text, file_key)
+            meta = metadata_cache.get(selected_chat_file)
+            if not meta:
+                st.warning(f"No metadata found for {selected_chat_file}. Please process the file first.")
+                st.stop()
+
+            # Compose text from metadata summary and info for embedding
+            text_for_embedding = (
+                f"File Name: {meta.get('file_name', '')}\n"
+                f"Category: {meta.get('category', '')}\n"
+                f"Domain: {meta.get('domain', '')}\n"
+                f"Summary:\n{meta.get('summary', '')}"
+            )
+
+            vectorstore = create_vector_store(text_for_embedding, file_key)
             qa_chain = get_qa_chain(vectorstore)
+
             st.session_state[f"qa_chain_{file_key}"] = qa_chain
             st.session_state[f"chat_history_{file_key}"] = []
 
@@ -343,7 +444,7 @@ with tab3:
 
         if st.button("🔄 Reset Chat", key=f"reset_{file_key}", help="Reset chat history"):
             chat_history.clear()
-            st.rerun()
+            st.experimental_rerun()
 
         for msg in chat_history:
             with st.chat_message(msg["role"]):
@@ -363,21 +464,39 @@ with tab3:
             chat_history.append({"role": "user", "content": user_input})
             chat_history.append({"role": "assistant", "content": answer})
 
-# === Tab 4: Cross-File Chat ===
+
+# # === Tab 4: Cross-File Chat ===
+# with tab4:
+#     st.subheader("📊 Ask Questions Across All Files")
+#     if not results_cache:
+#         st.warning("Please run the categorization first.")
+#     else:
+#         df = pd.DataFrame(results_cache.values())
+#         meta_texts = [
+#             f"{row['summary']}\nFile: {row['file_name']}\nCategory: {row['category']}\nDomain: {row['domain']}"
+#             for _, row in df.iterrows()
+#         ]
+#         vs = Chroma.from_texts(meta_texts, embedding=embedding_model, collection_name="case_meta", persist_directory=".chromadb_case_meta")
+#         cross_qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=vs.as_retriever())
+#         cross_query = st.text_input("Ask a question across all case studies:")
+#         if cross_query:
+#             with st.spinner("Thinking..."):
+#                 result = cross_qa.run(cross_query)
+#                 st.markdown(result)
 with tab4:
     st.subheader("📊 Ask Questions Across All Files")
-    if not results_cache:
-        st.warning("Please run the categorization first.")
+
+    if not metadata_cache:
+        st.warning("Please process files first to generate metadata.")
     else:
-        df = pd.DataFrame(results_cache.values())
-        meta_texts = [
-            f"{row['summary']}\nFile: {row['file_name']}\nCategory: {row['category']}\nDomain: {row['domain']}"
-            for _, row in df.iterrows()
-        ]
-        vs = Chroma.from_texts(meta_texts, embedding=embedding_model, collection_name="case_meta", persist_directory=".chromadb_case_meta")
-        cross_qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=vs.as_retriever())
+        vs = load_or_create_metadata_vectorstore(metadata_cache)
+        cross_qa = RetrievalQA.from_chain_type(
+            llm=llm, chain_type="stuff", retriever=vs.as_retriever()
+        )
+
         cross_query = st.text_input("Ask a question across all case studies:")
         if cross_query:
             with st.spinner("Thinking..."):
                 result = cross_qa.run(cross_query)
                 st.markdown(result)
+
