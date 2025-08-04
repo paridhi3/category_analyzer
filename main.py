@@ -264,7 +264,7 @@ with tab3:
                 st.warning(f"No metadata found for {selected_chat_file}. Please process the file first.")
                 st.stop()
                 
-            vs = load_or_create_metadata_vectorstore()
+            vs = load_or_create_metadata_vectorstore(metadata_cache)
             qa_chain = get_qa_chain(vs, file_key)
 
             st.session_state[f"qa_chain_{file_key}"] = qa_chain
