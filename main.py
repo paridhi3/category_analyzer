@@ -283,27 +283,11 @@ def load_or_create_metadata_vectorstore(metadata_cache):
     vs.persist()
     return vs
 
-def get_qa_chain(vectorstore):
-    memory = ConversationBufferMemory(
-        memory_key="chat_history",
-        return_messages=True,
-        input_key="query",
-        k=3
-    )
-    return RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=vectorstore.as_retriever(),
-        memory=memory,
-        return_source_documents=False
-    )
-
 # === Prompt for Tab 3: File-specific Q&A ===
 file_chat_prompt = PromptTemplate(
     input_variables=["context", "query"],
     template="""
-You are an AI assistant helping a user understand a specific case study file (PDF or PPTX). 
-Use the following file content to answer the user's question.
+You are an assistant answering questions based on extracted file metadata.
 
 Context:
 {context}
@@ -328,15 +312,28 @@ cross_file_chat_prompt = ChatPromptTemplate.from_messages([
 
 # === Function to create QA chain with prompt ===
 def get_qa_chain(vectorstore):
+    memory = ConversationBufferMemory(
+        memory_key="chat_history",
+        return_messages=True,
+        input_key="query",
+        k=3
+    )
     return RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
         retriever=vectorstore.as_retriever(),
+        memory=memory,
         return_source_documents=False,
         chain_type_kwargs={"prompt": file_chat_prompt}
     )
 
 def get_cross_file_chain(vectorstore):
+    memory = ConversationBufferMemory(
+        memory_key="chat_history",
+        return_messages=True,
+        input_key="query",
+        k=3
+    )
     return RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
@@ -483,7 +480,7 @@ with tab3:
                 f"Summary:\n{meta.get('summary', '')}"
             )
 
-            vectorstore = create_vector_store(text_for_embedding, file_key)
+            vectorstore = load_or_create_vector_store(text_for_embedding, file_key)
             qa_chain = get_qa_chain(vectorstore)
 
             st.session_state[f"qa_chain_{file_key}"] = qa_chain
@@ -545,12 +542,7 @@ with tab4:
             f"{row['summary']}\nFile: {row['file_name']}\nCategory: {row['category']}\nDomain: {row['domain']}"
             for _, row in df.iterrows()
         ]
-        vs = Chroma.from_texts(
-            meta_texts,
-            embedding=embedding_model,
-            collection_name="case_meta",
-            persist_directory=".chromadb_case_meta"
-        )
+        vs = load_or_create_metadata_vectorstore(metadata_cache)
         cross_qa = get_cross_file_chain(vs)
 
         cross_query = st.chat_input("Ask a question across all case studies:")
