@@ -194,6 +194,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import RetrievalQA
+from langchain.prompts import PromptTemplate, ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
 from agents.reader_agent import run_reader_agent
 from agents.categorizer_agent import run_categorization_agent
@@ -251,6 +252,54 @@ def get_qa_chain(vectorstore):
         memory=memory,
         return_source_documents=False
     )
+
+# === Prompt for Tab 3: File-specific Q&A ===
+file_chat_prompt = PromptTemplate(
+    input_variables=["context", "query"],
+    template="""
+You are an AI assistant helping a user understand a specific file (PDF or PPTX). 
+Use the following file content to answer the user's question.
+
+Context:
+{context}
+
+Question:
+{query}
+
+Answer as clearly and concisely as possible. If the answer isn't in the context, say so explicitly.
+""",
+)
+
+# === Prompt for Tab 4: Cross-file metadata Q&A ===
+cross_file_chat_prompt = ChatPromptTemplate.from_messages([
+    SystemMessagePromptTemplate.from_template(
+        "You are a helpful assistant with access to metadata summaries of case study files. "
+        "You should base your answers only on the summaries, categories, domains, and technologies used."
+    ),
+    HumanMessagePromptTemplate.from_template(
+        "Here is some metadata information:\n{context}\n\nQuestion: {query}"
+    )
+])
+
+# === Function to create QA chain with prompt ===
+def get_qa_chain(vectorstore):
+    return RetrievalQA.from_chain_type(
+        llm=llm,
+        chain_type="stuff",
+        retriever=vectorstore.as_retriever(),
+        return_source_documents=False,
+        chain_type_kwargs={"prompt": file_chat_prompt}
+    )
+
+def get_cross_file_chain(vectorstore):
+    return RetrievalQA.from_chain_type(
+        llm=llm,
+        chain_type="stuff",
+        retriever=vectorstore.as_retriever(),
+        return_source_documents=False,
+        chain_type_kwargs={"prompt": cross_file_chat_prompt}
+    )
+
 
 # === Load & Save Metadata JSON ===
 METADATA_FILE = "metadata.json"
@@ -328,6 +377,45 @@ with tab2:
         st.markdown(summary)
 
 # === Tab 3: File Chatbot ===
+# with tab3:
+#     st.subheader("💬 Ask Questions About a File")
+#     selected_chat_file = st.selectbox("Choose a file for chat:", summary_files, key="chat_file")
+
+#     if selected_chat_file:
+#         file_key = selected_chat_file.replace(".", "_")
+
+#         if f"qa_chain_{file_key}" not in st.session_state:
+#             file_text = supported_files[selected_chat_file]
+#             vectorstore = create_vector_store(file_text, file_key)
+#             qa_chain = get_qa_chain(vectorstore)
+#             st.session_state[f"qa_chain_{file_key}"] = qa_chain
+#             st.session_state[f"chat_history_{file_key}"] = []
+
+#         qa_chain = st.session_state[f"qa_chain_{file_key}"]
+#         chat_history = st.session_state[f"chat_history_{file_key}"]
+
+#         if st.button("🔄 Reset Chat", key=f"reset_{file_key}", help="Reset chat history"):
+#             chat_history.clear()
+#             st.rerun()
+
+#         for msg in chat_history:
+#             with st.chat_message(msg["role"]):
+#                 st.markdown(msg["content"])
+
+#         user_input = st.chat_input("Type your question:")
+#         if user_input:
+#             with st.chat_message("user"):
+#                 st.markdown(user_input)
+
+#             response = qa_chain({"query": user_input})
+#             answer = response.get("result", "❌ No answer found.")
+
+#             with st.chat_message("assistant"):
+#                 st.markdown(answer)
+
+#             chat_history.append({"role": "user", "content": user_input})
+#             chat_history.append({"role": "assistant", "content": answer})
+# === Tab 3: File Chatbot ===
 with tab3:
     st.subheader("💬 Ask Questions About a File")
     selected_chat_file = st.selectbox("Choose a file for chat:", summary_files, key="chat_file")
@@ -337,7 +425,7 @@ with tab3:
 
         if f"qa_chain_{file_key}" not in st.session_state:
             file_text = supported_files[selected_chat_file]
-            vectorstore = create_vector_store(file_text, file_key)
+            vectorstore = load_or_create_vector_store(file_text, file_key)  # ← changed function
             qa_chain = get_qa_chain(vectorstore)
             st.session_state[f"qa_chain_{file_key}"] = qa_chain
             st.session_state[f"chat_history_{file_key}"] = []
@@ -367,6 +455,25 @@ with tab3:
             chat_history.append({"role": "user", "content": user_input})
             chat_history.append({"role": "assistant", "content": answer})
 
+
+# === Tab 4: Cross-File Chat ===
+# with tab4:
+#     st.subheader("📊 Ask Questions Across All Files")
+#     if not metadata_cache:
+#         st.warning("Please run the categorization first.")
+#     else:
+#         df = pd.DataFrame(metadata_cache.values())
+#         meta_texts = [
+#             f"{row['summary']}\nFile: {row['file_name']}\nCategory: {row['category']}\nDomain: {row['domain']}"
+#             for _, row in df.iterrows()
+#         ]
+#         vs = Chroma.from_texts(meta_texts, embedding=embedding_model, collection_name="case_meta", persist_directory=".chromadb_case_meta")
+#         cross_qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=vs.as_retriever())
+#         cross_query = st.chat_input("Ask a question across all case studies:")
+#         if cross_query:
+#             with st.spinner("Thinking..."):
+#                 result = cross_qa.run(cross_query)
+#                 st.markdown(result)
 # === Tab 4: Cross-File Chat ===
 with tab4:
     st.subheader("📊 Ask Questions Across All Files")
@@ -378,10 +485,17 @@ with tab4:
             f"{row['summary']}\nFile: {row['file_name']}\nCategory: {row['category']}\nDomain: {row['domain']}"
             for _, row in df.iterrows()
         ]
-        vs = Chroma.from_texts(meta_texts, embedding=embedding_model, collection_name="case_meta", persist_directory=".chromadb_case_meta")
-        cross_qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=vs.as_retriever())
+        vs = Chroma.from_texts(
+            meta_texts,
+            embedding=embedding_model,
+            collection_name="case_meta",
+            persist_directory=".chromadb_case_meta"
+        )
+        cross_qa = get_cross_file_chain(vs)
+
         cross_query = st.chat_input("Ask a question across all case studies:")
         if cross_query:
             with st.spinner("Thinking..."):
                 result = cross_qa.run(cross_query)
                 st.markdown(result)
+
