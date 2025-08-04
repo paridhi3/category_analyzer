@@ -6,7 +6,33 @@ File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Li
     exec(code, module.__dict__)  # noqa: S102
     ~~~~^^^^^^^^^^^^^^^^^^^^^^^
 File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\main.py", line 284, in <module>
-    response = qa_chain({"question": user_input})
+    response = qa_chain({"query": user_input})
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain_core\_api\deprecation.py", line 189, in warning_emitting_wrapper
+    return wrapped(*args, **kwargs)
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain\chains\base.py", line 410, in __call__
+    return self.invoke(
+           ~~~~~~~~~~~^
+        inputs,
+        ^^^^^^^
+    ...<2 lines>...
+        include_run_info=include_run_info,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain\chains\base.py", line 165, in invoke
+    self._call(inputs, run_manager=run_manager)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain\chains\retrieval_qa\base.py", line 159, in _call
+    answer = self.combine_documents_chain.run(
+        input_documents=docs,
+        question=question,
+        callbacks=_run_manager.get_child(),
+    )
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain_core\_api\deprecation.py", line 189, in warning_emitting_wrapper
+    return wrapped(*args, **kwargs)
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain\chains\base.py", line 632, in run
+    return self(kwargs, callbacks=callbacks, tags=tags, metadata=metadata)[
+           ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain_core\_api\deprecation.py", line 189, in warning_emitting_wrapper
     return wrapped(*args, **kwargs)
 File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain\chains\base.py", line 410, in __call__
