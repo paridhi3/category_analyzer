@@ -90,6 +90,9 @@ def load_or_create_metadata_vectorstore(metadata_cache):
             f"File Name: {metadata.get('file_name', '')}\n"
             f"Category: {metadata.get('category', '')}\n"
             f"Domain: {metadata.get('domain', '')}\n"
+            f"Project Title: {metadata.get('project_title', '')}\n"
+            f"Technologies used: {metadata.get('technology_used', '')}\n"
+            f"Client Name: {metadata.get('client_name', '')}\n"
             f"Summary: {metadata.get('summary', '')}"
         )
         doc = Document(page_content=text_for_embedding, metadata=metadata)
@@ -110,6 +113,7 @@ file_chat_prompt = PromptTemplate(
     input_variables=["context", "query"],
     template="""
 You are an assistant answering questions based on extracted file metadata.
+Answer the questions based on the selected file name.
 
 Context:
 {context}
@@ -160,6 +164,7 @@ def get_cross_file_chain(vectorstore):
         llm=llm,
         chain_type="stuff",
         retriever=vectorstore.as_retriever(),
+        memory=memory,
         return_source_documents=False,
         chain_type_kwargs={"prompt": cross_file_chat_prompt}
     )
@@ -190,10 +195,11 @@ def process_file(file_name, text):
     category = run_categorization_agent(agent_output["summary"])
     result = {
         "file_name": agent_output["file_name"],
-        "project_title": agent_output["project_title"],
+        "category": category,
         "domain": agent_output["domain"],
-        "client_name": agent_output["client_name"],
         "technology_used": agent_output["technology_used"],
+        "project_title": agent_output["project_title"],
+        "client_name": agent_output["client_name"],
         "summary": agent_output["summary"],
     }
     metadata_cache[file_name] = result
@@ -260,6 +266,9 @@ with tab3:
                 f"File Name: {meta.get('file_name', '')}\n"
                 f"Category: {meta.get('category', '')}\n"
                 f"Domain: {meta.get('domain', '')}\n"
+                f"Project Title: {meta.get('project_title', '')}\n"
+                f"Technologies used: {meta.get('technology_used', '')}\n"
+                f"Client Name: {meta.get('client_name', '')}\n"
                 f"Summary:\n{meta.get('summary', '')}"
             )
 
@@ -302,7 +311,13 @@ with tab4:
     else:
         df = pd.DataFrame(metadata_cache.values())
         meta_texts = [
-            f"File: {row['file_name']}\nProject Title: {row['project_title']}\nCategory: {row['category']}\nDomain: {row['domain']}\nTechnologies used: {row['technology_used']}\nSummary: {row['summary']}"
+            f"File: {row['file_name']}\n"
+            f"Project Title: {row['project_title']}"
+            f"\nCategory: {row['category']}\n"
+            f"Domain: {row['domain']}\n"
+            f"Technologies used: {row['technology_used']}\n"
+            f"Summary: {row['summary']}"
+            
             for _, row in df.iterrows()
         ]
         vs = load_or_create_metadata_vectorstore(metadata_cache)
@@ -313,4 +328,3 @@ with tab4:
             with st.spinner("Thinking..."):
                 result = cross_qa.run(cross_query)
                 st.markdown(result)
-
