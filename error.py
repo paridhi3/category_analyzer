@@ -1,122 +1,59 @@
-# === Tab 3: File Chatbot ===
-# with tab3:
-#     st.subheader("💬 Ask Questions About a File")
-#     selected_chat_file = st.selectbox("Choose a file for chat:", summary_files, key="chat_file")
+chromadb.errors.InvalidArgumentError: Validation error: name: Expected a name containing 3-512 characters from [a-zA-Z0-9._-], starting and ending with a character in [a-zA-Z0-9]. Got: metadata_Case Study 1_pptx
 
-#     if selected_chat_file:
-#         file_key = selected_chat_file.replace(".", "_")
-
-#         if f"qa_chain_{file_key}" not in st.session_state:
-#             file_text = supported_files[selected_chat_file]
-#             vectorstore = create_vector_store(file_text, file_key)
-#             qa_chain = get_qa_chain(vectorstore)
-#             st.session_state[f"qa_chain_{file_key}"] = qa_chain
-#             st.session_state[f"chat_history_{file_key}"] = []
-
-#         qa_chain = st.session_state[f"qa_chain_{file_key}"]
-#         chat_history = st.session_state[f"chat_history_{file_key}"]
-
-#         if st.button("🔄 Reset Chat", key=f"reset_{file_key}", help="Reset chat history"):
-#             chat_history.clear()
-#             st.rerun()
-
-#         for msg in chat_history:
-#             with st.chat_message(msg["role"]):
-#                 st.markdown(msg["content"])
-
-#         user_input = st.chat_input("Type your question:")
-#         if user_input:
-#             with st.chat_message("user"):
-#                 st.markdown(user_input)
-
-#             response = qa_chain({"query": user_input})
-#             answer = response.get("result", "❌ No answer found.")
-
-#             with st.chat_message("assistant"):
-#                 st.markdown(answer)
-
-#             chat_history.append({"role": "user", "content": user_input})
-#             chat_history.append({"role": "assistant", "content": answer})
-# === Tab 3: File Chatbot ===
-with tab3:
-    st.subheader("💬 Ask Questions About a File")
-    selected_chat_file = st.selectbox("Choose a file for chat:", summary_files, key="chat_file")
-
-    if selected_chat_file:
-        file_key = selected_chat_file.replace(".", "_")
-
-        if f"qa_chain_{file_key}" not in st.session_state:
-            file_text = supported_files[selected_chat_file]
-            vectorstore = load_or_create_vector_store(file_text, file_key)  # ← changed function
-            qa_chain = get_qa_chain(vectorstore)
-            st.session_state[f"qa_chain_{file_key}"] = qa_chain
-            st.session_state[f"chat_history_{file_key}"] = []
-
-        qa_chain = st.session_state[f"qa_chain_{file_key}"]
-        chat_history = st.session_state[f"chat_history_{file_key}"]
-
-        if st.button("🔄 Reset Chat", key=f"reset_{file_key}", help="Reset chat history"):
-            chat_history.clear()
-            st.rerun()
-
-        for msg in chat_history:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-
-        user_input = st.chat_input("Type your question:")
-        if user_input:
-            with st.chat_message("user"):
-                st.markdown(user_input)
-
-            response = qa_chain({"query": user_input})
-            answer = response.get("result", "❌ No answer found.")
-
-            with st.chat_message("assistant"):
-                st.markdown(answer)
-
-            chat_history.append({"role": "user", "content": user_input})
-            chat_history.append({"role": "assistant", "content": answer})
-
-
-# === Tab 4: Cross-File Chat ===
-# with tab4:
-#     st.subheader("📊 Ask Questions Across All Files")
-#     if not metadata_cache:
-#         st.warning("Please run the categorization first.")
-#     else:
-#         df = pd.DataFrame(metadata_cache.values())
-#         meta_texts = [
-#             f"{row['summary']}\nFile: {row['file_name']}\nCategory: {row['category']}\nDomain: {row['domain']}"
-#             for _, row in df.iterrows()
-#         ]
-#         vs = Chroma.from_texts(meta_texts, embedding=embedding_model, collection_name="case_meta", persist_directory=".chromadb_case_meta")
-#         cross_qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=vs.as_retriever())
-#         cross_query = st.chat_input("Ask a question across all case studies:")
-#         if cross_query:
-#             with st.spinner("Thinking..."):
-#                 result = cross_qa.run(cross_query)
-#                 st.markdown(result)
-# === Tab 4: Cross-File Chat ===
-with tab4:
-    st.subheader("📊 Ask Questions Across All Files")
-    if not metadata_cache:
-        st.warning("Please run the categorization first.")
-    else:
-        df = pd.DataFrame(metadata_cache.values())
-        meta_texts = [
-            f"File: {row['file_name']}\nProject Title: {row['project_title']}\nCategory: {row['category']}\nDomain: {row['domain']}\nTechnologies used: {row['technology_used']}\nSummary: {row['summary']}"
-            for _, row in df.iterrows()
-        ]
-        vs = Chroma.from_texts(
-            meta_texts,
-            embedding=embedding_model,
-            collection_name="case_meta",
-            persist_directory=".chromadb_case_meta"
-        )
-        cross_qa = get_cross_file_chain(vs)
-
-        cross_query = st.chat_input("Ask a question across all case studies:")
-        if cross_query:
-            with st.spinner("Thinking..."):
-                result = cross_qa.run(cross_query)
-                st.markdown(result)
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 128, in exec_func_with_error_handling
+    result = func()
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 669, in code_to_exec
+    exec(code, module.__dict__)  # noqa: S102
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\main.py", line 286, in <module>
+    vectorstore = Chroma.from_documents(
+        docs,
+    ...<2 lines>...
+        persist_directory=None  # In-memory only
+    )
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain_community\vectorstores\chroma.py", line 887, in from_documents
+    return cls.from_texts(
+           ~~~~~~~~~~~~~~^
+        texts=texts,
+        ^^^^^^^^^^^^
+    ...<8 lines>...
+        **kwargs,
+        ^^^^^^^^^
+    )
+    ^
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain_community\vectorstores\chroma.py", line 817, in from_texts
+    chroma_collection = cls(
+        collection_name=collection_name,
+    ...<5 lines>...
+        **kwargs,
+    )
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain_core\_api\deprecation.py", line 222, in warn_if_direct_instance
+    return wrapped(self, *args, **kwargs)
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\langchain_community\vectorstores\chroma.py", line 128, in __init__
+    self._collection = self._client.get_or_create_collection(
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        name=collection_name,
+        ^^^^^^^^^^^^^^^^^^^^^
+        embedding_function=None,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+        metadata=collection_metadata,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\chromadb\api\client.py", line 232, in get_or_create_collection
+    model = self._server.get_or_create_collection(
+        name=name,
+    ...<3 lines>...
+        configuration=configuration,
+    )
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\chromadb\api\rust.py", line 268, in get_or_create_collection
+    return self.create_collection(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        name, configuration, metadata, True, tenant, database
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+File "C:\Users\703417007_agarwal\Desktop\CASE-STUDY-BUILDER\Categorizer\.venv\Lib\site-packages\chromadb\api\rust.py", line 227, in create_collection
+    collection = self.bindings.create_collection(
+        name, configuration_json_str, metadata, get_or_create, tenant, database
+    )
