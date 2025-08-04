@@ -41,29 +41,29 @@ def sanitize_name(file_name: str) -> str:
     name = re.sub(r'[^a-zA-Z0-9._-]', '_', name).strip("_")
     return f"ragstore_{name}"
 
-def load_or_create_vector_store(text, file_name):
-    safe_name = sanitize_name(file_name)
-    persist_dir = f".chromadb_{safe_name}"
+# def load_or_create_vector_store(text, file_name):
+#     safe_name = sanitize_name(file_name)
+#     persist_dir = f".chromadb_{safe_name}"
 
-    # If the vector store already exists, just load it
-    if os.path.exists(persist_dir):
-        return Chroma(
-            collection_name=safe_name,
-            embedding_function=embedding_model,
-            persist_directory=persist_dir,
-        )
-    # Otherwise, create it from text chunks
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = splitter.split_text(text)
+#     # If the vector store already exists, just load it
+#     if os.path.exists(persist_dir):
+#         return Chroma(
+#             collection_name=safe_name,
+#             embedding_function=embedding_model,
+#             persist_directory=persist_dir,
+#         )
+#     # Otherwise, create it from text chunks
+#     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+#     chunks = splitter.split_text(text)
 
-    vector_store = Chroma.from_texts(
-        chunks,
-        embedding=embedding_model,
-        collection_name=safe_name,
-        persist_directory=persist_dir
-    )
-    vector_store.persist()
-    return vector_store
+#     vector_store = Chroma.from_texts(
+#         chunks,
+#         embedding=embedding_model,
+#         collection_name=safe_name,
+#         persist_directory=persist_dir
+#     )
+#     vector_store.persist()
+#     return vector_store
 
 def load_or_create_metadata_vectorstore(metadata_cache):
     safe_name = "metadata_vectorstore"
