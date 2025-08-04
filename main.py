@@ -247,6 +247,9 @@ with tab2:
         st.markdown(summary)
 
 # === Tab 3: File Chatbot ===
+from langchain_community.vectorstores import Chroma
+from langchain_core.documents import Document
+
 with tab3:
     st.subheader("💬 Ask Questions About a File")
     summary_files = list(supported_files.keys())
@@ -261,7 +264,7 @@ with tab3:
                 st.warning(f"No metadata found for {selected_chat_file}. Please process the file first.")
                 st.stop()
 
-            # Compose text from metadata summary and info for embedding
+            # Prepare text for embedding
             text_for_embedding = (
                 f"File Name: {meta.get('file_name', '')}\n"
                 f"Category: {meta.get('category', '')}\n"
@@ -272,8 +275,27 @@ with tab3:
                 f"Summary:\n{meta.get('summary', '')}"
             )
 
-            vectorstore = load_or_create_vector_store(text_for_embedding, file_key)
-            qa_chain = get_qa_chain(vectorstore)
+            # Create a one-file vectorstore in memory
+            doc = Document(
+                page_content=text_for_embedding,
+                metadata={"file_name": selected_chat_file}
+            )
+            splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size=500, chunk_overlap=50)
+            docs = splitter.split_documents([doc])
+
+            vectorstore = Chroma.from_documents(
+                docs,
+                embedding=embedding_model,
+                collection_name=f"metadata_{file_key}",
+                persist_directory=None  # In-memory only
+            )
+
+            retriever = vectorstore.as_retriever()
+            qa_chain = RetrievalQA.from_chain_type(
+                llm=llm,
+                retriever=retriever,
+                return_source_documents=False
+            )
 
             st.session_state[f"qa_chain_{file_key}"] = qa_chain
             st.session_state[f"chat_history_{file_key}"] = []
@@ -302,6 +324,7 @@ with tab3:
 
             chat_history.append({"role": "user", "content": user_input})
             chat_history.append({"role": "assistant", "content": answer})
+
 
 # === Tab 4: Cross-File Chat ===
 with tab4:
