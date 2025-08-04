@@ -141,7 +141,7 @@ def get_qa_chain(vectorstore, file_key):
     memory = ConversationBufferMemory(
         memory_key="chat_history",
         return_messages=True,
-        input_key="question",
+        input_key="query",
         k=3
     )
     return RetrievalQA.from_chain_type(
@@ -281,7 +281,7 @@ with tab3:
             with st.chat_message("user"):
                 st.markdown(user_input)
 
-            response = qa_chain({"question": user_input})
+            response = qa_chain({"query": user_input})
             answer = response.get("result", "❌ No answer found.")
 
             with st.chat_message("assistant"):
