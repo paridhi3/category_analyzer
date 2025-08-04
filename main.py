@@ -137,7 +137,7 @@ cross_file_chat_prompt = ChatPromptTemplate.from_messages([
 ])
 
 # === Function to create QA chain with prompt ===
-def get_qa_chain(vectorstore):
+def get_qa_chain(vectorstore, file_key):
     memory = ConversationBufferMemory(
         memory_key="chat_history",
         return_messages=True,
@@ -147,7 +147,7 @@ def get_qa_chain(vectorstore):
     return RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
-        retriever=vectorstore.as_retriever(),
+        retriever=vectorstore.as_retriever(search_kwargs={filter: {file_key}}),
         memory=memory,
         return_source_documents=False,
         chain_type_kwargs={"prompt": file_chat_prompt}
@@ -263,39 +263,9 @@ with tab3:
             if not meta:
                 st.warning(f"No metadata found for {selected_chat_file}. Please process the file first.")
                 st.stop()
-
-            # Prepare text for embedding
-            text_for_embedding = (
-                f"File Name: {meta.get('file_name', '')}\n"
-                f"Category: {meta.get('category', '')}\n"
-                f"Domain: {meta.get('domain', '')}\n"
-                f"Project Title: {meta.get('project_title', '')}\n"
-                f"Technologies used: {meta.get('technology_used', '')}\n"
-                f"Client Name: {meta.get('client_name', '')}\n"
-                f"Summary:\n{meta.get('summary', '')}"
-            )
-
-            # Create a one-file vectorstore in memory
-            doc = Document(
-                page_content=text_for_embedding,
-                metadata={"file_name": selected_chat_file}
-            )
-            splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size=500, chunk_overlap=50)
-            docs = splitter.split_documents([doc])
-
-            vectorstore = Chroma.from_documents(
-                docs,
-                embedding=embedding_model,
-                collection_name=f"metadata_{file_key}",
-                persist_directory=None  # In-memory only
-            )
-
-            retriever = vectorstore.as_retriever()
-            qa_chain = RetrievalQA.from_chain_type(
-                llm=llm,
-                retriever=retriever,
-                return_source_documents=False
-            )
+                
+            vs = load_or_create_metadata_vectorstore()
+            qa_chain = get_qa_chain(vs, file_key)
 
             st.session_state[f"qa_chain_{file_key}"] = qa_chain
             st.session_state[f"chat_history_{file_key}"] = []
