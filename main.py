@@ -14,6 +14,7 @@ from langchain_core.documents import Document
 
 from agents.reader_agent import run_reader_agent
 from agents.categorizer_agent import run_categorization_agent
+from agents.validation_agent import run_validation
 from config import llm, loader, embedding_model
 
 # === Streamlit Setup ===
@@ -185,6 +186,7 @@ def process_file(file_name, text):
     }
     metadata_cache[file_name] = result
     save_metadata(metadata_cache)
+    run_validation()
     return result
 
 # === Tabs ===
