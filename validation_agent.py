@@ -1,11 +1,10 @@
 # agents/validation_agent.py
-
 import json
 from langchain_core.tools import tool
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
 from config import llm
-
+ 
 # === Tool ===
 @tool
 def estimate_confidence_score(field_name: str, field_value: str, case_text: str) -> str:
@@ -21,38 +20,35 @@ def estimate_confidence_score(field_name: str, field_value: str, case_text: str)
         "- Do NOT include explanations or text\n\n"
         f"Case Study Text:\n{case_text[:3500]}"
     )
-
-    response = llm.invoke([
-        {"role": "system", "content": "You are a strict and concise validator."},
-        {"role": "user", "content": prompt}
-    ])
-
+ 
+    response = llm.invoke([{"role": "system", "content": "You are a strict and concise validator."}, {"role": "user", "content": prompt}])
+ 
     try:
         score = float(response.content.strip())
         return str(min(max(score, 0.0), 1.0))  # Clamp score between 0 and 1
     except:
         return "0.5"  # Default fallback confidence
-
+ 
 # === Tool List ===
 tools = [estimate_confidence_score]
-
+ 
 # === Prompt Template ===
 prompt_template = ChatPromptTemplate.from_template("""
 You are a validation agent. Use tools to estimate confidence scores for metadata extracted from case studies.
-
+ 
 Inputs:
 - Field name
 - Field value
 - Full case study text
-
+ 
 Return a float score between 0.0 and 1.0.
 {agent_scratchpad}
 """)
-
+ 
 # === Create AgentExecutor ===
 agent = create_tool_calling_agent(llm, tools, prompt_template)
 validation_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-
+ 
 # === Utility Function ===
 def run_validation_agent(metadata: dict, case_text: str) -> dict:
     """
@@ -64,9 +60,9 @@ def run_validation_agent(metadata: dict, case_text: str) -> dict:
         ...
     }
     """
-    fields_to_check = ["project_title", "client_name", "domain", "technology_used", "summary"]
+    fields_to_check = ["category", "domain", "technology_used", "project_title", "client_name", "summary"]
     scores = {}
-
+ 
     for field in fields_to_check:
         value = metadata.get(field, "")
         result = validation_executor.invoke({
@@ -78,5 +74,5 @@ def run_validation_agent(metadata: dict, case_text: str) -> dict:
             scores[field] = float(result["output"])
         except:
             scores[field] = 0.5  # fallback
-
+ 
     return scores
