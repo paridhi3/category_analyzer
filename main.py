@@ -35,6 +35,12 @@ for doc in documents:
     if file_name.lower().endswith(('.pdf', '.pptx')):
         supported_files[file_name] = doc.page_content
 
+# Extract just the 'value' for display
+def extract_value(field):
+    if isinstance(field, dict):
+        return field.get("value", "")
+    return field or ""
+
 # === Create vector store per file ===
 def sanitize_name(file_name: str) -> str:
     name = os.path.splitext(file_name)[0]
@@ -62,13 +68,22 @@ def load_or_create_metadata_vectorstore(metadata_cache):
     # Create new Chroma vectorstore from metadata
     documents = []
     for metadata in metadata_cache.values():
+        # text_for_embedding = (
+        #     f"File Name: {metadata.get('file_name', '')}\n"
+        #     f"Category: {metadata.get('category', '')}\n"
+        #     f"Domain: {metadata.get('domain', '')}\n"
+        #     f"Project Title: {metadata.get('project_title', '')}\n"
+        #     f"Technologies used: {metadata.get('technology_used', '')}\n"
+        #     f"Client Name: {metadata.get('client_name', '')}\n"
+        #     f"Summary: {metadata.get('summary', '')}"
+        # )
         text_for_embedding = (
             f"File Name: {metadata.get('file_name', '')}\n"
-            f"Category: {metadata.get('category', '')}\n"
-            f"Domain: {metadata.get('domain', '')}\n"
-            f"Project Title: {metadata.get('project_title', '')}\n"
-            f"Technologies used: {metadata.get('technology_used', '')}\n"
-            f"Client Name: {metadata.get('client_name', '')}\n"
+            f"Category: {extract_value(metadata.get('category'))}\n"
+            f"Domain: {extract_value(metadata.get('domain'))}\n"
+            f"Project Title: {extract_value(metadata.get('project_title'))}\n"
+            f"Technologies used: {extract_value(metadata.get('technology_used'))}\n"
+            f"Client Name: {extract_value(metadata.get('client_name'))}\n"
             f"Summary: {metadata.get('summary', '')}"
         )
         doc = Document(page_content=text_for_embedding, metadata=metadata)
@@ -195,7 +210,18 @@ with tab1:
     st.subheader("🗂 File Categories")
     metadata_cache.update({file: process_file(file, text) for file, text in supported_files.items()})
     if metadata_cache:
-        df = pd.DataFrame(metadata_cache.values())[["file_name", "category", "domain", "technology_used"]]
+        # df = pd.DataFrame(metadata_cache.values())[["file_name", "category", "domain", "technology_used"]]
+        df_raw = metadata_cache.values()
+        df_data = []
+        for md in df_raw:
+            df_data.append({
+                "file_name": md.get("file_name", ""),
+                "category": extract_value(md.get("category")),
+                "domain": extract_value(md.get("domain")),
+                "technology_used": extract_value(md.get("technology_used")),
+            })
+        
+        df = pd.DataFrame(df_data)
         df = df.rename(columns={
             "file_name": "File Name",
             "category": "Category",
@@ -221,9 +247,12 @@ with tab2:
         if selected_summary_file not in metadata_cache:
             metadata_cache[selected_summary_file] = process_file(selected_summary_file, supported_files[selected_summary_file])
 
-        summary = metadata_cache[selected_summary_file]["summary"]
-        domain = metadata_cache[selected_summary_file]["domain"]
-        category = metadata_cache[selected_summary_file]["category"]
+        # summary = metadata_cache[selected_summary_file]["summary"]
+        # domain = metadata_cache[selected_summary_file]["domain"]
+        # category = metadata_cache[selected_summary_file]["category"]
+        summary = metadata_cache[selected_summary_file].get("summary", "")
+        domain = extract_value(metadata_cache[selected_summary_file].get("domain"))
+        category = extract_value(metadata_cache[selected_summary_file].get("category"))
 
         st.markdown(f"### Summary of `{selected_summary_file}`")
         st.info(f"**Category:** {category} | **Domain:** {domain}")
