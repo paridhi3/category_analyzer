@@ -1,384 +1,137 @@
-# # main.py
-# import os
-# import streamlit as st
-# from langchain.text_splitter import RecursiveCharacterTextSplitter
-# from langchain_community.vectorstores import Chroma
-# from langchain.memory import ConversationBufferMemory
-# from langchain.chains import RetrievalQA
-# from agents.reader_agent import run_reader_agent
-# from agents.categorizer_agent import run_categorization_agent
-# import pandas as pd
+# agents/reader_agent.py
 
-# from config import llm, loader, embedding_model
-
-# # === Streamlit Setup ===
-# st.set_page_config(page_title="Case Study Categorizer", layout="wide")
-# st.title("📁 Case Study Categorizer")
-
-# # === Load Documents from Azure Blob Storage ===
-# @st.cache_resource
-# def load_documents():
-#     return loader.load()
-
-# documents = load_documents()
-
-# # === Prepare supported files ===
-# supported_files = {}
-# for doc in documents:
-#     source_path = doc.metadata.get("source", "Unknown source")
-#     file_name = os.path.basename(source_path)
-#     if file_name.lower().endswith(('.pdf', '.pptx')):
-#         supported_files[file_name] = doc.page_content
-
-# # === create vector store per file after sanitizing file name ===
-# import re
-
-# def sanitize_name(file_name: str) -> str:
-#     # Remove extension and replace invalid characters with underscores
-#     name = os.path.splitext(file_name)[0]
-#     name = re.sub(r'[^a-zA-Z0-9._-]', '_', name)
-#     name = name.strip("_")  # Remove leading/trailing underscores
-#     return f"ragstore_{name}"  # Ensure name starts with valid char
-
-# def create_vector_store(text, file_name):
-#     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-#     chunks = splitter.split_text(text)
-
-#     safe_name = sanitize_name(file_name)
-
-#     vector_store = Chroma.from_texts(
-#         chunks,
-#         embedding=embedding_model,
-#         collection_name=safe_name,
-#         persist_directory=f".chromadb_{safe_name}"
-#     )
-#     vector_store.persist()
-#     return vector_store
+from langchain_core.tools import tool
+from langchain_core.prompts import ChatPromptTemplate
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from config import llm
 
 
-# def get_qa_chain(vectorstore):
-#     memory = ConversationBufferMemory(
-#         memory_key="chat_history",
-#         return_messages=True,
-#         input_key="query",
-#         k=3
-#     )
-#     return RetrievalQA.from_chain_type(
-#         llm=llm,
-#         chain_type="stuff",
-#         retriever=vectorstore.as_retriever(),
-#         memory=memory,
-#         return_source_documents=False
-#     )
-
-# # === Caching per-file processing ===
-# @st.cache_data(show_spinner="🔍 Processing file...", ttl=3600)
-# def process_file(file_name, text):
-#     agent_output = run_reader_agent(text)
-#     category = run_categorization_agent(agent_output["summary"])
-#     return {
-#         "File Name": file_name,
-#         "Category": category,
-#         "Domain": agent_output["domain"],
-#         "Summary": agent_output["summary"]
-#     }
-
-# results_cache = {}
-
-# # === Tabs for UI ===
-# tab1, tab2, tab3, tab4 = st.tabs(["🗂 File Categories", "📄 File Summary", "💬 Chat with File", "📊 Cross-File Chat"])
-
-# # === Tab 1: File Categories Table ===
-# with tab1:
-#     st.subheader("🗂 File Categories")
-#     results_cache.update({file: process_file(file, text) for file, text in supported_files.items()})
-#     if results_cache:
-#         df = pd.DataFrame(results_cache.values())[
-#             ["File Name", "Category", "Domain"]
-#         ]
-#         st.dataframe(df, use_container_width=True)
-#     else:
-#         st.info("Click the button above to process files.")
-
-
-# # === Tab 2: File Summary Viewer ===
-# with tab2:
-#     st.subheader("📄 View File Summary")
-#     summary_files = list(supported_files.keys())
-#     selected_summary_file = st.selectbox("Choose a file to view summary:", summary_files, key="summary_file")
-
-#     if selected_summary_file:
-#         # Run agent only if not already cached
-#         if selected_summary_file not in results_cache:
-#             results_cache[selected_summary_file] = process_file(selected_summary_file, supported_files[selected_summary_file])
-
-#         summary = results_cache[selected_summary_file]["Summary"]
-#         domain = results_cache[selected_summary_file]["Domain"]
-#         category = results_cache[selected_summary_file]["Category"]
-
-#         st.markdown(f"### Summary of `{selected_summary_file}`")
-#         st.markdown(summary)
-#         st.info(f"**Category:** {category} | **Domain:** {domain}")
-
-
-# # === Tab 3: File Chatbot ===
-# with tab3:
-#     st.subheader("💬 Ask Questions About a File")
-#     selected_chat_file = st.selectbox("Choose a file for chat:", summary_files, key="chat_file")
-
-#     if selected_chat_file:
-#         file_key = selected_chat_file.replace(".", "_")
-
-#         # Initialize session state
-#         if f"qa_chain_{file_key}" not in st.session_state:
-#             file_text = supported_files[selected_chat_file]
-#             vectorstore = create_vector_store(file_text, file_key)
-#             qa_chain = get_qa_chain(vectorstore)
-#             st.session_state[f"qa_chain_{file_key}"] = qa_chain
-#             st.session_state[f"chat_history_{file_key}"] = []
-
-#         qa_chain = st.session_state[f"qa_chain_{file_key}"]
-#         chat_history = st.session_state[f"chat_history_{file_key}"]
-
-#         # Reset Button
-#         if st.button("🔄 Reset Chat", key=f"reset_{file_key}", help="Reset chat history"):
-#             chat_history.clear()
-#             st.rerun()
-
-#         # Show chat history
-#         for msg in chat_history:
-#             with st.chat_message(msg["role"]):
-#                 st.markdown(msg["content"])
-
-#         # Chat Input
-#         user_input = st.chat_input("Type your question:")
-#         if user_input:
-#             with st.chat_message("user"):
-#                 st.markdown(user_input)
-
-#             response = qa_chain({"query": user_input})
-#             answer = response.get("result", "❌ No answer found.")
-
-#             with st.chat_message("assistant"):
-#                 st.markdown(answer)
-
-#             # Save to session
-#             chat_history.append({"role": "user", "content": user_input})
-#             chat_history.append({"role": "assistant", "content": answer})
-
-# with tab4:
-#     st.subheader("📊 Ask Questions Across All Files")
-#     if not results_cache:
-#         st.warning("Please run the categorization first.")
-#     else:
-#         df = pd.DataFrame(results_cache.values())
-#         meta_texts = [
-#             f"{row['Summary']}\nFile: {row['File Name']}\nCategory: {row['Category']}\nDomain: {row['Domain']}"
-#             for _, row in df.iterrows()
-#         ]
-#         vs = Chroma.from_texts(meta_texts, embedding=embedding_model, collection_name="case_meta", persist_directory=".chromadb_case_meta")
-#         cross_qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=vs.as_retriever())
-#         cross_query = st.text_input("Ask a question across all case studies:")
-#         if cross_query:
-#             with st.spinner("Thinking..."):
-#                 result = cross_qa.run(cross_query)
-#                 st.markdown(result)
-
-# main.py
-import os
-import re
-import json
-import streamlit as st
-import pandas as pd
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import RetrievalQA
-
-from agents.reader_agent import run_reader_agent
-from agents.categorizer_agent import run_categorization_agent
-from config import llm, loader, embedding_model
-
-# === Streamlit Setup ===
-st.set_page_config(page_title="Case Study Categorizer", layout="wide")
-st.title("📁 Case Study Categorizer")
-
-# === Load Documents from Azure Blob Storage ===
-@st.cache_resource
-def load_documents():
-    return loader.load()
-
-documents = load_documents()
-
-# === Prepare supported files ===
-supported_files = {}
-for doc in documents:
-    source_path = doc.metadata.get("source", "Unknown source")
-    file_name = os.path.basename(source_path)
-    if file_name.lower().endswith(('.pdf', '.pptx')):
-        supported_files[file_name] = doc.page_content
-
-# === Create vector store per file ===
-def sanitize_name(file_name: str) -> str:
-    name = os.path.splitext(file_name)[0]
-    name = re.sub(r'[^a-zA-Z0-9._-]', '_', name).strip("_")
-    return f"ragstore_{name}"
-
-def create_vector_store(text, file_name):
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = splitter.split_text(text)
-    safe_name = sanitize_name(file_name)
-    vector_store = Chroma.from_texts(
-        chunks,
-        embedding=embedding_model,
-        collection_name=safe_name,
-        persist_directory=f".chromadb_{safe_name}"
+@tool
+def review_case_study(text: str) -> str:
+    """
+    Reviews the case study and returns a detailed summary.
+    """
+    prompt = (
+        "Carefully read the case study below.\n\n"
+        "Then write a detailed, comprehensive and well-structured summary that captures all important details:\n\n"
+        f"{text[:3500]}"
     )
-    vector_store.persist()
-    return vector_store
+    output = llm.invoke([
+        {"role": "system", "content": "You are a summarization expert."},
+        {"role": "user", "content": prompt}
+    ])
+    return output.content.strip()
 
-def get_qa_chain(vectorstore):
-    memory = ConversationBufferMemory(
-        memory_key="chat_history",
-        return_messages=True,
-        input_key="query",
-        k=3
+
+@tool
+def detect_domain(text: str) -> str:
+    """
+    Detects the business domain (like Finance, Healthcare, HR, etc.) from the case study.
+    """
+    prompt = (
+        "Identify the business domain of the following case study.\n"
+        "Output ONLY the domain name (1–2 words), e.g., Finance, HR, Retail.\n\n"
+        f"{text[:3500]}"
     )
-    return RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=vectorstore.as_retriever(),
-        memory=memory,
-        return_source_documents=False
+    output = llm.invoke([
+        {"role": "system", "content": "You are a domain classification expert."},
+        {"role": "user", "content": prompt}
+    ])
+    return output.content.strip()
+
+
+@tool
+def extract_client_name(text: str) -> str:
+    """
+    Extracts the client name mentioned in the case study.
+    """
+    prompt = (
+        "Read the case study and extract the name of the client company.\n"
+        "If not clearly mentioned, return 'Unknown'.\n\n"
+        f"{text[:3500]}"
     )
+    output = llm.invoke([
+        {"role": "system", "content": "You extract client names from business documents."},
+        {"role": "user", "content": prompt}
+    ])
+    return output.content.strip()
 
-# === Load & Save Metadata JSON ===
-METADATA_FILE = "metadata.json"
 
-def load_metadata():
-    if os.path.exists(METADATA_FILE):
-        with open(METADATA_FILE, "r") as f:
-            return json.load(f)
-    return {}
+@tool
+def extract_project_title(text: str) -> str:
+    """
+    Extracts the project title that describes the initiative.
+    """
+    prompt = (
+        "Read the case study and extract the project title.\n"
+        "If unavailable, return 'Untitled Project'.\n\n"
+        f"{text[:3500]}"
+    )
+    output = llm.invoke([
+        {"role": "system", "content": "You extract project titles for case studies."},
+        {"role": "user", "content": prompt}
+    ])
+    return output.content.strip()
 
-def save_metadata(metadata):
-    with open(METADATA_FILE, "w") as f:
-        json.dump(metadata, f, indent=2)
 
-# === Process File with Agents (only if not in cache) ===
-metadata_cache = load_metadata()
+@tool
+def extract_technology_used(text: str) -> str:
+    """
+    Extracts a list of technologies, platforms, or tools used in the case study.
+    """
+    prompt = (
+        "Identify the technologies, platforms, or tools used in the following case study.\n"
+        "Return a comma-separated list (e.g., AWS, Azure, Power BI, Snowflake). If unknown, return 'Not Mentioned'.\n\n"
+        f"{text[:3500]}"
+    )
+    output = llm.invoke([
+        {"role": "system", "content": "You extract technologies from case studies."},
+        {"role": "user", "content": prompt}
+    ])
+    return output.content.strip()
 
-@st.cache_data(show_spinner="🔍 Processing file...", ttl=3600)
-def process_file(file_name, text):
-    if file_name in metadata_cache:
-        return metadata_cache[file_name]
 
-    agent_output = run_reader_agent(text, file_name)
-    print(agent_output)
-    category = run_categorization_agent(agent_output["summary"])
-    result = {
-        "file_name": agent_output["file_name"],
-        "project_title": agent_output["project_title"],
-        "domain": agent_output["domain"],
-        "client_name": agent_output["client_name"],
-        "technology_used": agent_output["technology_used"],
-        "summary": agent_output["summary"],
-        "category": category,
+tools = [
+    review_case_study,
+    detect_domain,
+    extract_client_name,
+    extract_project_title,
+    extract_technology_used,
+]
+
+prompt_template = ChatPromptTemplate.from_template("""
+You are a metadata extraction agent for case studies. Use tools to extract:
+
+1. Project Title
+2. Domain
+3. Client name 
+4. Technologies used
+5. Detailed Summary
+
+Case Study:
+{text}
+{agent_scratchpad}
+""")
+
+agent = create_tool_calling_agent(llm, tools, prompt_template)
+reader_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+
+
+def run_reader_agent(case_text: str, file_name: str) -> dict:
+    """
+    Runs metadata extraction agent on case study and returns a JSON dict.
+    """
+    project_title = extract_project_title.invoke(case_text)
+    domain = detect_domain.invoke(case_text)
+    client = extract_client_name.invoke(case_text)
+    tech = extract_technology_used.invoke(case_text)
+    summary = review_case_study.invoke(case_text)    
+
+    return {
+        "file_name": file_name,
+        "project_title": project_title,
+        "domain": domain,
+        "client_name": client,
+        "technology_used": tech,
+        "summary": summary,
     }
-    metadata_cache[file_name] = result
-    save_metadata(metadata_cache)
-    return result
-
-results_cache = {}
-
-# === Tabs ===
-tab1, tab2, tab3, tab4 = st.tabs(["🗂 File Categories", "📄 File Summary", "💬 Chat with File", "📊 Cross-File Chat"])
-
-# === Tab 1: File Categories Table ===
-with tab1:
-    st.subheader("🗂 File Categories")
-    metadata_cache.update({file: process_file(file, text) for file, text in supported_files.items()})
-    if metadata_cache:
-        df = pd.DataFrame(metadata_cache.values())[
-            ["File Name", "Category", "Domain"]
-        ]
-        st.dataframe(df, use_container_width=True)
-    else:
-        st.info("Click the button above to process files.")
-
-# === Tab 2: File Summary Viewer ===
-with tab2:
-    st.subheader("📄 View File Summary")
-    summary_files = list(supported_files.keys())
-    selected_summary_file = st.selectbox("Choose a file to view summary:", summary_files, key="summary_file")
-
-    if selected_summary_file:
-        if selected_summary_file not in metadata_cache:
-            metadata_cache[selected_summary_file] = process_file(selected_summary_file, supported_files[selected_summary_file])
-
-        summary = metadata_cache[selected_summary_file]["Summary"]
-        domain = metadata_cache[selected_summary_file]["Domain"]
-        category = metadata_cache[selected_summary_file]["Category"]
-
-        st.markdown(f"### Summary of `{selected_summary_file}`")
-        st.markdown(summary)
-        st.info(f"**Category:** {category} | **Domain:** {domain}")
-
-# === Tab 3: File Chatbot ===
-with tab3:
-    st.subheader("💬 Ask Questions About a File")
-    selected_chat_file = st.selectbox("Choose a file for chat:", summary_files, key="chat_file")
-
-    if selected_chat_file:
-        file_key = selected_chat_file.replace(".", "_")
-
-        if f"qa_chain_{file_key}" not in st.session_state:
-            file_text = supported_files[selected_chat_file]
-            vectorstore = create_vector_store(file_text, file_key)
-            qa_chain = get_qa_chain(vectorstore)
-            st.session_state[f"qa_chain_{file_key}"] = qa_chain
-            st.session_state[f"chat_history_{file_key}"] = []
-
-        qa_chain = st.session_state[f"qa_chain_{file_key}"]
-        chat_history = st.session_state[f"chat_history_{file_key}"]
-
-        if st.button("🔄 Reset Chat", key=f"reset_{file_key}", help="Reset chat history"):
-            chat_history.clear()
-            st.rerun()
-
-        for msg in chat_history:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-
-        user_input = st.chat_input("Type your question:")
-        if user_input:
-            with st.chat_message("user"):
-                st.markdown(user_input)
-
-            response = qa_chain({"query": user_input})
-            answer = response.get("result", "❌ No answer found.")
-
-            with st.chat_message("assistant"):
-                st.markdown(answer)
-
-            chat_history.append({"role": "user", "content": user_input})
-            chat_history.append({"role": "assistant", "content": answer})
-
-# === Tab 4: Cross-File Chat ===
-with tab4:
-    st.subheader("📊 Ask Questions Across All Files")
-    if not metadata_cache:
-        st.warning("Please run the categorization first.")
-    else:
-        df = pd.DataFrame(metadata_cache.values())
-        meta_texts = [
-            f"{row['Summary']}\nFile: {row['File Name']}\nCategory: {row['Category']}\nDomain: {row['Domain']}"
-            for _, row in df.iterrows()
-        ]
-        vs = Chroma.from_texts(meta_texts, embedding=embedding_model, collection_name="case_meta", persist_directory=".chromadb_case_meta")
-        cross_qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=vs.as_retriever())
-        cross_query = st.text_input("Ask a question across all case studies:")
-        if cross_query:
-            with st.spinner("Thinking..."):
-                result = cross_qa.run(cross_query)
-                st.markdown(result)
