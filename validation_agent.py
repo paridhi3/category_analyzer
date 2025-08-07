@@ -1,139 +1,119 @@
-# # agents/validation_agent.py
-# import json
-# from langchain_core.tools import tool
-# from langchain.agents import AgentExecutor, create_tool_calling_agent
-# from langchain_core.prompts import ChatPromptTemplate
-# from config import llm
- 
-# # === Tool ===
-# @tool
-# def estimate_confidence_score(field_name: str, field_value: str, case_text: str) -> str:
-#     """
-#     Estimate confidence score (0.0 to 1.0) for the extracted field.
-#     """
-#     prompt = (
-#         f"You are a metadata validation agent.\n\n"
-#         f"The field you are validating is: '{field_name}'\n"
-#         f"Extracted value: '{field_value}'\n\n"
-#         "Given the case study text below, how confident are you that the value is accurate and relevant?\n"
-#         "- Output ONLY a float score between 0.0 and 1.0\n"
-#         "- Do NOT include explanations or text\n\n"
-#         f"Case Study Text:\n{case_text[:3500]}"
-#     )
- 
-#     response = llm.invoke([{"role": "system", "content": "You are a strict and concise validator."}, {"role": "user", "content": prompt}])
- 
-#     try:
-#         score = float(response.content.strip())
-#         return str(min(max(score, 0.0), 1.0))  # Clamp score between 0 and 1
-#     except:
-#         return "0.5"  # Default fallback confidence
- 
-# # === Tool List ===
-# tools = [estimate_confidence_score]
- 
-# # === Prompt Template ===
-# prompt_template = ChatPromptTemplate.from_template("""
-# You are a validation agent. Use tools to estimate confidence scores for metadata extracted from case studies.
- 
-# Inputs:
-# - Field name
-# - Field value
-# - Full case study text
- 
-# Return a float score between 0.0 and 1.0.
-# {agent_scratchpad}
-# """)
- 
-# # === Create AgentExecutor ===
-# agent = create_tool_calling_agent(llm, tools, prompt_template)
-# validation_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
- 
-# # === Utility Function ===
-# def run_validation_agent(metadata: dict, case_text: str) -> dict:
-#     """
-#     Returns confidence scores for each metadata field.
-#     Example Output:
-#     {
-#         "project_title": 0.91,
-#         "client_name": 0.67,
-#         ...
-#     }
-#     """
-#     fields_to_check = ["category", "domain", "technology_used", "project_title", "client_name", "summary"]
-#     scores = {}
- 
-#     for field in fields_to_check:
-#         value = metadata.get(field, "")
-#         result = validation_executor.invoke({
-#             "field_name": field.replace("_", " ").title(),
-#             "field_value": value,
-#             "case_text": case_text
-#         })
-#         try:
-#             scores[field] = float(result["output"])
-#         except:
-#             scores[field] = 0.5  # fallback
- 
-#     return scores
-
-# agents/validation_agent.py
-
-import json
-from config import llm
 import os
-
-VALIDATION_FILE = "validation_results.json"
-
-def estimate_confidence_score(field_name: str, field_value: str, case_text: str) -> float:
-    """
-    Returns confidence score between 0 and 1 for the correctness of a field's value.
-    """
+import json
+import time
+ 
+from config import llm
+ 
+# === Constants ===
+# METADATA_PATH = "metadata.json"
+# VALIDATION_FILE = "validation_results.json"
+MAX_RETRIES = 3
+RETRY_DELAY = 2  # seconds
+ 
+ 
+# === Tool 1: Confidence Estimation with Robust Prompt ===
+def estimate_confidence_score_tool(field_name: str, field_value: str, case_text: str) -> float:
     prompt = f"""
-You are a confidence evaluator.
-
-Evaluate how well the following value fits the field based on the case study:
-- Field: {field_name}
-- Value: {field_value}
-
-Case Study Text:
+You are a confidence evaluator. Your job is to assess how accurately the field value matches the case study content.
+ 
+Field: {field_name}
+Value: {field_value}
+ 
+Case Study Content:
 {case_text[:3000]}
-
-Output a number between 0 and 1 (e.g., 0.85). No explanation.
+ 
+Instructions:
+- If the field value is explicitly mentioned or clearly supported, give a high score (0.8 to 1.0).
+- If it's implied but not exact, give a moderate score (0.4 to 0.7).
+- If it's missing, vague, or unrelated, give a low score (0.0 to 0.3).
+- Be conservative in your judgment.
+- Do NOT output anything except a float number between 0 and 1.
+ 
+Output:
 """
-    output = llm.invoke([
-        {"role": "system", "content": "Return only the confidence score as a float."},
-        {"role": "user", "content": prompt}
-    ])
-    try:
-        return float(output.content.strip())
-    except:
-        return 0.0
-
-
-def run_validation(metadata_path="metadata.json", output_path=VALIDATION_FILE):
+ 
+    for attempt in range(MAX_RETRIES):
+        try:
+            result = llm.invoke([
+                {"role": "system", "content": "Return only the confidence score as a float between 0 and 1."},
+                {"role": "user", "content": prompt}
+            ])
+            score = float(result.content.strip())
+ 
+            # Avoid constant 1.0 bias unless very confident
+            if score == 1.0:
+                score = 0.99
+ 
+            return round(score, 4)
+ 
+        except Exception as e:
+            print(f"[Retry {attempt+1}] Error scoring '{field_name}': {e}")
+            time.sleep(RETRY_DELAY)
+ 
+    return 0.0  # fallback score on failure
+ 
+ 
+# === Tool 2: Read Metadata ===
+def read_metadata(metadata_path: str) -> dict:
     if not os.path.exists(metadata_path):
-        raise FileNotFoundError("metadata.json not found!")
-
-    with open(metadata_path, "r") as f:
-        metadata = json.load(f)
-
+        print(f"⚠️ Metadata file '{metadata_path}' not found.")
+        return {}
+ 
+    try:
+        with open(metadata_path, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"❌ Error reading metadata: {e}")
+        return {}
+ 
+ 
+# === Tool 3: Write Validation Results ===
+def write_validation_results(results: dict, output_path: str):
+    try:
+        with open(output_path, "w") as f:
+            json.dump(results, f, indent=2)
+        print(f"✅ Validation results saved to: {output_path}")
+    except Exception as e:
+        print(f"❌ Failed to write validation results: {e}")
+ 
+ 
+# === Self-Healing Validation Agent ===
+def agent_run_validation(metadata_path: str, output_path: str) -> dict:
+    metadata = read_metadata(metadata_path)
+    if not metadata:
+        print("❌ No metadata found. Skipping validation.")
+        return {}
+ 
     validation_results = {}
-
+ 
     for file_name, data in metadata.items():
-        case_text = data.get("summary", "")
-        validation_results[file_name] = {}
-
-        for field in ["category", "domain", "technology_used"]:
-            field_value = data.get(field, "")
-            score = estimate_confidence_score(field, field_value, case_text)
-            validation_results[file_name][field] = {
-                "value": field_value,
-                "confidence": round(score, 4)
-            }
-
-    # Write the validation results to separate file
-    with open(output_path, "w") as f:
-        json.dump(validation_results, f, indent=2)
-
+        try:
+            case_text = data.get("summary", "")
+            validation_results[file_name] = {}
+ 
+            for field in ["category", "domain", "technology_used"]:
+                field_value = data.get(field, "")
+                if not field_value:
+                    print(f"⚠️ Missing value for '{field}' in file: {file_name}")
+                    confidence = 0.0
+                else:
+                    confidence = estimate_confidence_score_tool(field, field_value, case_text)
+ 
+                validation_results[file_name][field] = {
+                    "value": field_value,
+                    "confidence": confidence
+                }
+ 
+        except Exception as e:
+            print(f"❌ Error processing file '{file_name}': {e}")
+            continue
+ 
+    write_validation_results(validation_results, output_path)
     return validation_results
+ 
+ 
+# === Example Invocation ===
+# if __name__ == "__main__":
+#     results = agent_run_validation(METADATA_PATH, VALIDATION_FILE)
+#     print("✅ Validation complete.")
+ 
