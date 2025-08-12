@@ -77,19 +77,13 @@ import json
 
 @app.post("/chat")
 async def chat_with_metadata(
-    query:str=Form(...),
-    metadata:str=Form(...)
+    query:str,
+    metadata=METADATA_FILE
 ):
-    # query = request.get("query")
-    # metadata = request.get("metadata")
-
     try:
         metadata_parsed=json.loads(metadata)
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid Metadata JSON")
-
-    # if query is None or metadata is None:
-    #     raise HTTPException(status_code=400, detail="Missing 'query' or 'metadata' in request body")
 
     # Step 1: Try metadata-based rule
     meta_answer = answer_from_metadata(query, metadata_parsed)
