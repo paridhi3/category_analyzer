@@ -72,16 +72,27 @@ def answer_from_metadata(query: str, metadata: list):
         return f"Category counts: {cat_counts}"
     return None
 
-@app.post("/chat")
-async def chat_with_metadata(request: dict):
-    query = request.get("query")
-    metadata = request.get("metadata")
+from fastapi import Form
+import json
 
-    if query is None or metadata is None:
-        raise HTTPException(status_code=400, detail="Missing 'query' or 'metadata' in request body")
+@app.post("/chat")
+async def chat_with_metadata(
+    query:str=Form(...),
+    metadata:str=Form(...)
+):
+    # query = request.get("query")
+    # metadata = request.get("metadata")
+
+    try:
+        metadata_parsed=json.loads(metadata)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid Metadata JSON")
+
+    # if query is None or metadata is None:
+    #     raise HTTPException(status_code=400, detail="Missing 'query' or 'metadata' in request body")
 
     # Step 1: Try metadata-based rule
-    meta_answer = answer_from_metadata(query, metadata)
+    meta_answer = answer_from_metadata(query, metadata_parsed)
     if meta_answer:
         return {"response": meta_answer}
 
