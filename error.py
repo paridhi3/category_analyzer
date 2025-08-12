@@ -1,13 +1,3 @@
 {
-  "detail": [
-    {
-      "type": "missing",
-      "loc": [
-        "body",
-        "query"
-      ],
-      "msg": "Field required",
-      "input": null
-    }
-  ]
+  "detail": "Invalid Metadata JSON"
 }
