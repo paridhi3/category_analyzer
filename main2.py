@@ -77,11 +77,10 @@ import json
 
 @app.post("/chat")
 async def chat_with_metadata(
-    query:str,
-    metadata=METADATA_FILE
+    query:str
 ):
     try:
-        metadata_parsed=json.loads(metadata)
+        metadata_parsed=json.loads(METADATA_FILE)
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid Metadata JSON")
 
@@ -92,7 +91,7 @@ async def chat_with_metadata(
 
     # Step 2: Use Azure OpenAI LLM
     try:
-        context_text = json.dumps(metadata, indent=2)
+        context_text = json.dumps(METADATA_FILE, indent=2)
         prompt = (
             f"Answer the following question using this case study metadata:\n"
             f"{context_text}\n\nQuestion: {query}"
