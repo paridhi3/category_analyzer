@@ -111,11 +111,18 @@ async def search(category: str = None, domain: str = None):
     if not os.path.exists(METADATA_FILE):
         raise HTTPException(status_code=400, detail="Metadata file not found. Please process case studies first.")
 
-    with open(METADATA_FILE, "r") as f:
+    with open(METADATA_FILE, "r", encoding="utf-8") as f:
         metadata = json.load(f)
+
     filtered = metadata
-    if category:
+
+    # Ignore filter if category is None or "All"
+    if category and category.lower() != "all":
         filtered = [m for m in filtered if m.get("category") == category]
-    if domain:
+
+    # Ignore filter if domain is None or "All"
+    if domain and domain.lower() != "all":
         filtered = [m for m in filtered if m.get("domain") == domain]
+
     return {"results": filtered}
+
