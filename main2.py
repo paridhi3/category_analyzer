@@ -116,13 +116,29 @@ async def search(category: str = None, domain: str = None):
 
     filtered = metadata
 
-    # Ignore filter if category is None or "All"
-    if category and category.lower() != "all":
-        filtered = [m for m in filtered if m.get("category") == category]
+    # Normalize inputs for case-insensitive comparison and handle "All"
+    cat_filter = category.lower() if category and category.lower() != "all" else None
+    dom_filter = domain.lower() if domain and domain.lower() != "all" else None
 
-    # Ignore filter if domain is None or "All"
-    if domain and domain.lower() != "all":
-        filtered = [m for m in filtered if m.get("domain") == domain]
+    if cat_filter and dom_filter:
+        # Filter both category AND domain
+        filtered = [
+            m for m in filtered
+            if m.get("category", "").lower() == cat_filter and m.get("domain", "").lower() == dom_filter
+        ]
+    elif cat_filter:
+        # Only filter category
+        filtered = [
+            m for m in filtered
+            if m.get("category", "").lower() == cat_filter
+        ]
+    elif dom_filter:
+        # Only filter domain
+        filtered = [
+            m for m in filtered
+            if m.get("domain", "").lower() == dom_filter
+        ]
+    # else no filters applied, return all metadata
 
     return {"results": filtered}
 
